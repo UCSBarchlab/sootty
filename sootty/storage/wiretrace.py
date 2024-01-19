@@ -1,6 +1,7 @@
 import sys
-from vcd.reader import *
+import polars as pl
 
+from vcd.reader import *
 from ..exceptions import *
 from ..parser import parser
 from .wiregroup import WireGroup
@@ -11,6 +12,7 @@ from ..utils import evcd2vcd
 class WireTrace:
     def __init__(self):
         self.root = WireGroup("__root__")
+        self.wires_df = pl.DataFrame()
 
     @classmethod
     def from_vcd(cls, filename):
@@ -77,6 +79,15 @@ class WireTrace:
         this = cls()
         this.metadata = dict()  # dictionary of vcd metadata
         wires = dict()  # map from id_code to wire object
+
+        wire_id = dict()
+        wire_name = dict()
+        wire_size = dict()
+        wire_groups = dict()
+        wire_vc_dfs = []
+        wire_vc_idx = dict()
+        idx_count = 0
+
         stack = [this.root]  # store stack of current group for scoping
 
         with open(filename, "rb") as stream:
@@ -103,12 +114,24 @@ class WireTrace:
                     stack.pop()
                 elif token.kind is TokenKind.VAR:
                     if token.var.id_code in wires:
+                        # Used if wire is in multiple groups?
+                        # wire_groups[token.var.id_code].append(stack[-1].name)
                         stack[-1].add_wire(wires[token.var.id_code])
                     else:
                         wire = Wire(
                             name=token.var.reference,
                             width=token.var.size,
                         )
+
+                        wire_id[token.var.id_code] = token.var.id_code
+                        wire_name[token.var.id_code] = token.var.reference
+                        wire_size[token.var.id_code] = token.var.size
+                        # wire_groups[tokn.var.id_code].append(stack[-1].name)
+                        wire_vc_idx[token.var.id_code] = idx_count
+                        vc_df = pl.DataFrame()
+                        wire_vc_dfs.append(vc_df)
+                        idx_count = idx_count + 1
+
                         wires[token.var.id_code] = wire
                         stack[-1].add_wire(wire)
                 elif token.kind is TokenKind.VERSION:
@@ -147,6 +170,10 @@ class WireTrace:
                     pass  # not sure what to do here
                 else:
                     raise SoottyError(f"Invalid vcd token when parsing: {token}")
+
+            this.wires_df = pl.from_dicts([wire_id, wire_name, wire_size, wire_vc_idx])
+            print(this.wires_df)
+            print(wire_vc_dfs[0])
 
             return this
 
