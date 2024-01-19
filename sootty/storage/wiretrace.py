@@ -80,12 +80,8 @@ class WireTrace:
         this.metadata = dict()  # dictionary of vcd metadata
         wires = dict()  # map from id_code to wire object
 
-        wire_id = dict()
-        wire_name = dict()
-        wire_size = dict()
-        wire_groups = dict()
+        wire_df_list = []
         wire_vc_dfs = []
-        wire_vc_idx = dict()
         idx_count = 0
 
         stack = [this.root]  # store stack of current group for scoping
@@ -123,11 +119,13 @@ class WireTrace:
                             width=token.var.size,
                         )
 
-                        wire_id[token.var.id_code] = token.var.id_code
-                        wire_name[token.var.id_code] = token.var.reference
-                        wire_size[token.var.id_code] = token.var.size
+                        wire_dict =    {"id": token.var.id_code,
+                                        "name": token.var.reference,
+                                        "size": token.var.size,
+                                        "df_idx": idx_count}
+                        wire_df_list.append(wire_dict)
+
                         # wire_groups[tokn.var.id_code].append(stack[-1].name)
-                        wire_vc_idx[token.var.id_code] = idx_count
                         vc_df = pl.DataFrame()
                         wire_vc_dfs.append(vc_df)
                         idx_count = idx_count + 1
@@ -171,7 +169,7 @@ class WireTrace:
                 else:
                     raise SoottyError(f"Invalid vcd token when parsing: {token}")
 
-            this.wires_df = pl.from_dicts([wire_id, wire_name, wire_size, wire_vc_idx])
+            this.wires_df = pl.from_dicts(wire_df_list)
             print(this.wires_df)
             print(wire_vc_dfs[0])
 
