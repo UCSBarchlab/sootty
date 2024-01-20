@@ -13,6 +13,7 @@ class WireTrace:
     def __init__(self):
         self.root = WireGroup("__root__")
         self.wires_df = pl.DataFrame()
+        self.wires_vc = pl.DataFrame()
 
     @classmethod
     def from_vcd(cls, filename):
@@ -127,7 +128,7 @@ class WireTrace:
 
                         # wire_groups[tokn.var.id_code].append(stack[-1].name)
                         vc_df = pl.DataFrame()
-                        wire_vc_dfs.append(vc_df)
+                        # wire_vc_dfs.append(vc_df)
                         idx_count = idx_count + 1
 
                         wires[token.var.id_code] = wire
@@ -144,6 +145,12 @@ class WireTrace:
                 elif token.kind is TokenKind.CHANGE_SCALAR:
                     value = token.scalar_change.value
                     value = int(value) if value in ("0", "1") else value
+
+                    vc_dict =    {"time": time,
+                                  "id": token.scalar_change.id_code,
+                                  "value": value}
+                    wire_vc_dfs.append(wire_dict)
+
                     wires[token.scalar_change.id_code][time] = value
                 elif token.kind is TokenKind.CHANGE_VECTOR:
                     value = token.vector_change.value
@@ -170,8 +177,9 @@ class WireTrace:
                     raise SoottyError(f"Invalid vcd token when parsing: {token}")
 
             this.wires_df = pl.from_dicts(wire_df_list)
+            this.wires_vc = pl.from_dicts(wire_vc_dfs)
             print(this.wires_df)
-            print(wire_vc_dfs[0])
+            print(this.wires_vc)
 
             return this
 
