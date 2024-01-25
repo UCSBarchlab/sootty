@@ -1,5 +1,6 @@
 import argparse
 import sys
+import polars as pl
 
 from .exceptions import SoottyError
 from .save import save_query, reload_query
@@ -176,6 +177,5 @@ def main():
 
     if btable:
         wiretrace.print_breakpoints(breakpoints)
-
 if __name__ == "__main__":
     main()
