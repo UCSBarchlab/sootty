@@ -23,7 +23,7 @@ class ValueChange:
         new_row = pl.DataFrame({'time': [int(time)], 'value': [int(value)]}) 
         #concatenate new row to existing dataframe
         self.data = pl.concat([self.data, new_row])
-        #print("self.data:", self.data)
+        #print("self.data:", self.data)     
                                
     def get(self, time):
         result = self.data.filter(pl.col('time') == time) #filter rows that match the time
@@ -204,9 +204,6 @@ class ValueChange:
         return ValueChange(width=self.width, data=shifted_data.rename({'new_time': 'time'}))
 
     def _acc(self):
-        
-
-
 
         # Create new columns 'not_null' and 'bool_value' indicating non-null and boolean cast of 'value'.
         data = self.data.with_columns([
@@ -224,4 +221,16 @@ class ValueChange:
         # Select only 'time' and 'counter' columns and set width to 0.
         return ValueChange(width=0, data=data.select(['time', 'counter']))
 
-
+    # def _acc(self):
+    #     data = ValueChange(width=0)
+    #     counter = 0
+    #     data[0] = counter
+    #     state = True
+    #     for key in self:
+    #         if self[key] and not state:
+    #             state = True
+    #             counter += 1
+    #             data[key] = counter
+    #         elif not self[key] and state:
+    #             state = False
+    #     return data

@@ -1,7 +1,7 @@
 from itertools import compress, chain
 
 from ..exceptions import *
-from .valuechangeOld import ValueChange
+from .valuechange import ValueChange
 
 
 class Wire:
