@@ -100,7 +100,7 @@ class WireTrace:
                 elif token.kind is TokenKind.ENDDEFINITIONS:
                     break  # end of definitions
                 elif token.kind is TokenKind.SCOPE: #see scope, add group(containing scope), add to top of stack
-                    print("this the scope:", token.scope.ident)
+                    #print("this the scope:", token.scope.ident)
                     group = WireGroup(token.scope.ident) #group contains the name of the scope, which contains wires, which is all in a wiregroup object
                     stack[-1].add_group(group) #add new group to last index of the list, which is the top of stack 
                     stack.append(group) #add the group to the stack
@@ -179,12 +179,12 @@ class WireTrace:
                 else:
                     raise SoottyError(f"Invalid vcd token when parsing: {token}")
                 
-            print("testing if we get wires or anything else like reg:", wires)
+            #print("testing if we get wires or anything else like reg:", wires)
             this.wires_metadata_df = pl.from_dicts(wire_metadata_df_list)
             this.wires_vc = pl.from_dicts(wire_vc_dfs)
-            print(this.wires_metadata_df)
-            print(this.wires_vc)
-            print("WiredListt:", wire_metadata_df_list)
+            #print(this.wires_metadata_df)
+            #print(this.wires_vc)
+            #print("WiredListt:", wire_metadata_df_list)
 
             return this
 

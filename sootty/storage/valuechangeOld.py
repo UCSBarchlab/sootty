@@ -23,7 +23,7 @@ class ValueChange:
         new_row = pl.DataFrame({'time': [int(time)], 'value': [int(value)]}) 
         #concatenate new row to existing dataframe
         self.data = pl.concat([self.data, new_row])
-        print("self.data:", self.data)
+        #print("self.data:", self.data)
                                
     def get(self, time):
         result = self.data.filter(pl.col('time') == time) #filter rows that match the time
