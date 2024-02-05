@@ -1,17 +1,23 @@
 from itertools import compress, chain
 
 from ..exceptions import *
-from .valuechange import ValueChange
+from .valuechangeOld import ValueChange
 
 
 class Wire:
     def __init__(self, name, width=1):
         self.name = name
-        self._data = ValueChange(width)
+        self._data = ValueChange(width) # _ means data is private and can only be modified through mehtods of wire class
 
-    @classmethod
+    @classmethod #class method indiciates from_data is a class method.
+    #class method take cls as their first arguemnt instead of self and can be called on the class itself
+    #cls = Wire class
     def from_data(cls, name, data, width=1):
-        wire = cls(name=name, width=width)
+        wire = cls(name=name, width=width) #create new instance of Wire called wire
+        #compres(...) identifies the indices in data where value changes from previous data
+        #zip(): creates pairs of consecutive elements in data, starting with None
+        #map: creates boolean array where true indicates change in value
+        #compress(range): use this array to filter indices in data where changes occur
         for key in compress(
             range(len(data)),
             map(lambda pair: pair[0] != pair[1], zip(chain([None], data), data)), #zip combines multiple interables into tuples, chain combined multiple iterables into single interable, 
@@ -19,16 +25,16 @@ class Wire:
             wire[key] = data[key]
         return wire
 
-    def __setitem__(self, key, value):
-        self._data[key] = value
+    def __setitem__(self, time, value):
+        self._data.add_change(time, value)
 
-    def __getitem__(self, key):
-        return self._data.get(key)
+    def __getitem__(self, time): 
+        return self._data.get(time)
 
-    def __delitem__(self, key):
-        del self._data[key]  # throws error if not present
+    def __delitem__(self, key): #fix
+        del self._data[key]  # throws error if not present #change here
 
-    def width(self):
+    def width(self): 
         return self._data.width
 
     def length(self):
@@ -36,8 +42,8 @@ class Wire:
         return self._data.length()
 
     def end(self):
-        """Returns the final value on the wire"""
-        return self._data[self._data.length()]
+        """Returns the final value on the wire""" 
+        return self._data[self._data.length()] #fix
 
     def times(self, length=0):
         """Returns a list of times with high value on the wire."""
@@ -184,5 +190,5 @@ class Wire:
 
     def _acc(self):
         wire = Wire(name="acc " + self.name)
-        wire._data = self._data._acc()
+        # wire._data = self._data._acc()
         return wire

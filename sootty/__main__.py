@@ -4,6 +4,7 @@ import polars as pl
 
 from .exceptions import SoottyError
 from .save import save_query, reload_query
+from .storage import Wire
 from .storage import WireTrace
 from .visualizer import Visualizer
 

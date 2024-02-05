@@ -75,7 +75,7 @@ $upscope $end
 
 
 $scope module control $end
-$var wire 6 J opcode [5:0] $end
+$var wire 6  Jopcode [5:0] $end
 $var wire 6 K funct [5:0] $end
 $var reg 3 L alu_op [2:0] $end
 $var reg 1 M alu_src $end
