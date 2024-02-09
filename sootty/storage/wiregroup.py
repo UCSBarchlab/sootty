@@ -10,6 +10,8 @@ class WireGroup:
         self.groups = []
         self.wires = []
 
+        self.all_wires_df = pl.DataFrame()
+
         self.groups_df = pl.DataFrame()
         self.wires_df = pl.DataFrame([], schema={'name':pl.String, 'time': pl.Int64, 'value': pl.Int64, 'length': pl.Int64, 'width': pl.Int64})
 
@@ -17,7 +19,7 @@ class WireGroup:
         self.wires.append(wire)
 
         # this prints out null because time doesn't exist in the value change dictionary yet
-
+        
         # print(wire.__getitem__('time')) 
         temp_wire_df = pl.DataFrame({
             'name': wire.name,
@@ -27,9 +29,38 @@ class WireGroup:
             'width': wire.width(),
         })
         self.wires_df.extend(temp_wire_df)
-        print(self.wires_df)
+        name_str = self.name + '.' + wire.name
 
+        # TODO: try using the values in dumpvars for initial values
+        temp_all_wires_df = pl.DataFrame({
+            name_str: [
+                {'name': wire.name},
+                {'time': wire.__getitem__('time')},
+                {'value': wire.__getitem__('value')},
+                {'length': wire.length()},
+                {'width': wire.width()}
+            ]
+        })
+
+        if self.all_wires_df.is_empty():
+            self.all_wires_df = temp_all_wires_df
+        elif name_str in self.all_wires_df.columns:
+            #TODO: implement duplicate wire names
+            pass
+
+        else:
+            self.all_wires_df = pl.concat(
+                [
+                    self.all_wires_df, 
+                    temp_all_wires_df
+                ],
+                how="horizontal")
+
+        print(self.all_wires_df)
+
+        
     def add_group(self, group):
+        # print(group)
         self.groups.append(group)
 
     def num_wires(self):
