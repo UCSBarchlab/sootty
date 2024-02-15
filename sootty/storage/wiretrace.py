@@ -100,7 +100,9 @@ class WireTrace:
                 elif token.kind is TokenKind.ENDDEFINITIONS:
                     break  # end of definitions
                 elif token.kind is TokenKind.SCOPE:
-                    group = WireGroup(token.scope.ident)
+                    prepend_name = ''
+                    prepend_name += stack[-1].name + '.' + token.scope.ident
+                    group = WireGroup(prepend_name)                    
                     stack[-1].add_group(group)
                     stack.append(group)
                 elif token.kind is TokenKind.TIMESCALE:
@@ -113,6 +115,7 @@ class WireTrace:
                     if token.var.id_code in wires:
                         # Used if wire is in multiple groups?
                         # wire_groups[token.var.id_code].append(stack[-1].name)
+                        # PREPENDING THE NAME HERE BASED ON STACK[-1] Value is
                         stack[-1].add_wire(wires[token.var.id_code])
                     else:
                         wire = Wire(

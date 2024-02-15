@@ -6,29 +6,19 @@ from .wire import Wire
 
 class WireGroup:
     def __init__(self, name: str):
-        self.name = name
+        self.name = name # e.g. Test_MIPS.core.alu
         self.groups = []
         self.wires = []
 
         self.all_wires_df = pl.DataFrame()
 
-        self.groups_df = pl.DataFrame()
-        self.wires_df = pl.DataFrame([], schema={'name':pl.String, 'time': pl.Int64, 'value': pl.Int64, 'length': pl.Int64, 'width': pl.Int64})
+        # self.groups_df = pl.DataFrame()
+        # self.wires_df = pl.DataFrame([], schema={'name':pl.String, 'time': pl.Int64, 'value': pl.Int64, 'length': pl.Int64, 'width': pl.Int64})
 
     def add_wire(self, wire):
         self.wires.append(wire)
 
         # this prints out null because time doesn't exist in the value change dictionary yet
-        
-        # print(wire.__getitem__('time')) 
-        temp_wire_df = pl.DataFrame({
-            'name': wire.name,
-            'time': wire.__getitem__('time'),
-            'value': wire.__getitem__('value'),
-            'length': wire.length(),
-            'width': wire.width(),
-        })
-        self.wires_df.extend(temp_wire_df)
         name_str = self.name + '.' + wire.name
 
         # TODO: try using the values in dumpvars for initial values
@@ -79,7 +69,10 @@ class WireGroup:
     def find(self, name: str):
         """Returns the first wire object with the given name, if it exists."""
         """dataframe version"""
-        find_wires_df = self.wires_df.filter(pl.col("name") == name)
+        # print("find")
+        # print(self.all_wires_df)
+        # # if not self.name == "__root__":
+        # find_wires_df = self.all_wires_df.select(self.name + '.' + name)
         # print(find_wires_df)
 
         for wire in self.wires:
