@@ -4,7 +4,6 @@ from sortedcontainers import SortedDict, SortedList, SortedSet
 
 from ..exceptions import *
 
-
 class ValueChange(SortedDict):
     def __init__(self, width=1, *args, **kwargs):
         super().__init__(self, *args, **kwargs)

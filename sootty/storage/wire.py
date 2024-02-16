@@ -2,12 +2,14 @@ from itertools import compress, chain
 
 from ..exceptions import *
 from .valuechange import ValueChange
+import polars as pl
 
 
 class Wire:
     def __init__(self, name, width=1):
         self.name = name
         self._data = ValueChange(width)
+        self._data_df = pl.DataFrame()
 
     @classmethod
     def from_data(cls, name, data, width=1):
@@ -21,9 +23,16 @@ class Wire:
 
     def __setitem__(self, key, value):
         self._data[key] = value
-
+        temp_vc = pl.DataFrame({str(key): [{'value': value},]})
+        self._data_df = pl.concat(
+                [
+                    self._data_df, 
+                    temp_vc
+                ],
+                how="horizontal")
+        
     def __getitem__(self, key):
-        return self._data.get(key)
+        return self._data_df.get_column(str(key))[0]['value']
 
     def __delitem__(self, key):
         del self._data[key]  # throws error if not present
