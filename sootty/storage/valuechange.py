@@ -7,8 +7,9 @@ import polars as pl
 class ValueChange:
     def __init__(self, width=1, data = None):
         self.width = width
-        self.data = pl.DataFrame({'time': pl.Series([], dtype=pl.Int64), #Utf8
-                                  'value': pl.Series([], dtype=pl.Int64)}) #store both string and integer invers
+        self.data = pl.DataFrame({'time': pl.Series([], dtype=pl.Int64), 
+                                  'value': pl.Series([], dtype=pl.Int64)})
+        self.pending_data = []
         
     def add_change(self, time, value): #add a row of time and value for each change
         if value == 'x' or value == 'z':
@@ -20,14 +21,25 @@ class ValueChange:
             except ValueError:
                 value = 0
         #create a new row 
-        new_row = pl.DataFrame({'time': [int(time)], 'value': [int(value)]}) 
+        new_row = pl.DataFrame({'time': time, 'value': value}) 
         #concatenate new row to existing dataframe
         self.data = pl.concat([self.data, new_row])
-        #print("self.data:", self.data)     
+        print("self.data:", self.data)     
+        #self.indivwire = pl.DataFrame()
+        # self.pending_data.append({'time': time, 'value': value})
+    
+    # def apply_datachanges(self):
+    #     if self.pending_data:
+    #         #created df from pending data
+    #         new_data = pl.DataFrame(self.pending_data)
+    #         #concat self.data to new_data
+    #         self.data = pl.concat([self.data,new_data])
+    #         #self.pending_data.clear()
                                
     def get(self, time):
         result = self.data.filter(pl.col('time') == time) #filter rows that match the time
         if len(result) > 0: #check if there are any matching rows
+            #print("This the result:", result['value'][0])
             return result['value'][0] #this accesses the first column called 'value' and the first element of the series
         else:
             closest_smaller_time = self.data.filter(pl.col('time') < time)['time'].max() #get the smallest max value
@@ -50,6 +62,7 @@ class ValueChange:
             filtered_data = filtered_data.filter(pl.col('time') >= start)
         if end is not None:
             filtered_data = filtered_data.filter(pl.col('time') <= end)
+        #print(filtered_data)
         return filtered_data['time'].to_list()
 
     def _to_bool(self): #Im confused by this function
@@ -148,78 +161,59 @@ class ValueChange:
     def __mod__(self, other):
         return self._binop(other, lambda x, y: x % y, self.width)
 
-    def _from(self): 
+    # def _from(self):
+    #     # Find the first index where 'value' is 1
+    #     first_index = self.data['value'].eq(1).arg_true().head(1)
 
-        #important for scenarios where I want the first occurence in time where the value is 1/on
-        data = pl.DataFrame({'time': [0], 'value': [0]})
-        #iterate through rows
-        for row in self.data.iter_rows():
-            #is value of that row is true/1
-            if row['value']:
-                #update data with the first isntance of time with value 1
-                data = pl.DataFrame({'time': [row['time']], 'value': [1]})
-                break
-        return ValueChange(width=1, data=data)
+    #     # If such an index exists, select the corresponding row
+    #     if first_index.len() > 0:
+    #         data = self.data[first_index, ['time', 'value']]
+    #     else:
+    #         # If no such value is found, return the placeholder data
+    #         data = pl.DataFrame({'time': [0], 'value': [0]})
+    #     return ValueChange(width=self.width, data=data)
 
-    def _after(self):
-        # Filter the dataframe to find the earliest time when 'value' is not zero and select the 'time' column.
-        first_true_time = self.data.filter(pl.col('value') != 0).select(pl.col('time')).min()
-        # Check if there is a time when 'value' first becomes non-zero.
-        if first_true_time['time'][0] is not None:
-            # Return a new dataframe with a single row indicating the time just after 'value' becomes non-zero.
-            return ValueChange(width=1, data=pl.DataFrame({'time': [first_true_time['time'][0] + 1], 'value': [1]}))
-        # Return an empty dataframe if 'value' never becomes non-zero.
-        return ValueChange(width=1, data=pl.DataFrame({'time': [], 'value': []}))
+    # def _after(self):
+    #     # Filter the dataframe to find the earliest time when 'value' is not zero and select the 'time' column.
+    #     first_true_time = self.data.filter(pl.col('value') != 0).select(pl.col('time')).min()
+    #     # Check if there is a time when 'value' first becomes non-zero.
+    #     if first_true_time['time'][0] is not None:
+    #         # Return a new dataframe with a single row indicating the time just after 'value' becomes non-zero.
+    #         return ValueChange(width=1, data=pl.DataFrame({'time': [first_true_time['time'][0] + 1], 'value': [1]}))
+    #     # Return an empty dataframe if 'value' never becomes non-zero.
+    #     return ValueChange(width=1, data=pl.DataFrame({'time': [], 'value': []}))
 
-    def _until(self):
-        # Similar to _after, find the earliest time when 'value' is not zero.
-        first_true_time = self.data.filter(pl.col('value') != 0).select(pl.col('time')).min()
-        # Check if such a time exists.
-        if first_true_time['time'][0] is not None:
-            # Return a dataframe with two rows: one at time 0 and one just after 'value' becomes non-zero.
-            return ValueChange(width=1, data=pl.DataFrame({'time': [0, first_true_time['time'][0] + 1], 'value': [1, 0]}))
-        # Return an empty dataframe if 'value' never becomes non-zero.
-        return ValueChange(width=1, data=pl.DataFrame({'time': [], 'value': []}))
+    # def _until(self):
+    #     # Similar to _after, find the earliest time when 'value' is not zero.
+    #     first_true_time = self.data.filter(pl.col('value') != 0).select(pl.col('time')).min()
+    #     # Check if such a time exists.
+    #     if first_true_time['time'][0] is not None:
+    #         # Return a dataframe with two rows: one at time 0 and one just after 'value' becomes non-zero.
+    #         return ValueChange(width=1, data=pl.DataFrame({'time': [0, first_true_time['time'][0] + 1], 'value': [1, 0]}))
+    #     # Return an empty dataframe if 'value' never becomes non-zero.
+    #     return ValueChange(width=1, data=pl.DataFrame({'time': [], 'value': []}))
 
-    def _before(self):
-        # Again, find the earliest time when 'value' is not zero.
-        first_true_time = self.data.filter(pl.col('value') != 0).select(pl.col('time')).min()
-        # Check if such a time exists.
-        if first_true_time['time'][0] is not None:
-            # Return a dataframe with two rows: one at time 0 and one just before 'value' becomes non-zero.
-            return ValueChange(width=1, data=pl.DataFrame({'time': [0, first_true_time['time'][0]], 'value': [1, 0]}))
-        # Return an empty dataframe if 'value' never becomes non-zero.
-        return ValueChange(width=1, data=pl.DataFrame({'time': [], 'value': []}))
+    # def _before(self):
+    #     # Again, find the earliest time when 'value' is not zero.
+    #     first_true_time = self.data.filter(pl.col('value') != 0).select(pl.col('time')).min()
+    #     # Check if such a time exists.
+    #     if first_true_time['time'][0] is not None:
+    #         # Return a dataframe with two rows: one at time 0 and one just before 'value' becomes non-zero.
+    #         return ValueChange(width=1, data=pl.DataFrame({'time': [0, first_true_time['time'][0]], 'value': [1, 0]}))
+    #     # Return an empty dataframe if 'value' never becomes non-zero.
+    #     return ValueChange(width=1, data=pl.DataFrame({'time': [], 'value': []}))
     
-    def _next(self, amt=1):
-        # Shift the 'time' values backwards by 'amt', filtering out negative times.
-        shifted_data = self.data.with_columns((pl.col('time') - amt).alias('new_time')).filter(pl.col('new_time') >= 0)
-        # Return the shifted data with the 'new_time' column renamed back to 'time'.
-        return ValueChange(width=self.width, data=shifted_data.rename({'new_time': 'time'}))
+    # def _next(self, amt=1):
+    #     # Shift the 'time' values backwards by 'amt', filtering out negative times.
+    #     shifted_data = self.data.with_columns((pl.col('time') - amt).alias('new_time')).filter(pl.col('new_time') >= 0)
+    #     # Return the shifted data with the 'new_time' column renamed back to 'time'.
+    #     return ValueChange(width=self.width, data=shifted_data.rename({'new_time': 'time'}))
     
-    def _prev(self, amt=1):
-        # Shift the 'time' values forwards by 'amt'.
-        shifted_data = self.data.with_columns((pl.col('time') + amt).alias('new_time'))
-        # Return the shifted data with the 'new_time' column renamed back to 'time'.
-        return ValueChange(width=self.width, data=shifted_data.rename({'new_time': 'time'}))
-
-    def _acc(self):
-
-        # Create new columns 'not_null' and 'bool_value' indicating non-null and boolean cast of 'value'.
-        data = self.data.with_columns([
-            pl.col('value').is_not_null().alias('not_null'),
-            pl.col('value').cast(bool).alias('bool_value')
-        ])
-        # Calculate the difference of 'bool_value' and fill nulls with False.
-        #data = data.with_columns(pl.col('bool_value').diff().fill_null(False))
-        data = data.with_columns([pl.col('bool_value').cast(int).diff().fill_null(0)])
-        # Filter data based on 'data' and 'not_null' columns.
-        data = data.filter((pl.col('bool_value') == 1) & (pl.col('not_null') == 1))
-        # Calculate the cumulative sum of 'data' and rename it as 'counter'.
-        #data = data.with_columns(pl.cum_sum(pl.col('bool_value') == 1).alias('counter'))
-        data = data.with_columns([pl.cum_sum(pl.col('bool_value') == 1).alias('counter')])
-        # Select only 'time' and 'counter' columns and set width to 0.
-        return ValueChange(width=0, data=data.select(['time', 'counter']))
+    # def _prev(self, amt=1):
+    #     # Shift the 'time' values forwards by 'amt'.
+    #     shifted_data = self.data.with_columns((pl.col('time') + amt).alias('new_time'))
+    #     # Return the shifted data with the 'new_time' column renamed back to 'time'.
+    #     return ValueChange(width=self.width, data=shifted_data.rename({'new_time': 'time'}))
 
     # def _acc(self):
     #     data = ValueChange(width=0)

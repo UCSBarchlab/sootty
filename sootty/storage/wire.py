@@ -44,6 +44,10 @@ class Wire:
     def end(self):
         """Returns the final value on the wire""" 
         return self._data[self._data.length()] #fix
+       
+        # max_time = self._data.length()
+        # final_value_row = self.data.data.filter(pl.col('time') == max_time)
+        # return final_value_row['value']
 
     def times(self, length=0):
         """Returns a list of times with high value on the wire."""
@@ -190,5 +194,5 @@ class Wire:
 
     def _acc(self):
         wire = Wire(name="acc " + self.name)
-        # wire._data = self._data._acc()
+        #wire._data = self._data._acc()
         return wire
