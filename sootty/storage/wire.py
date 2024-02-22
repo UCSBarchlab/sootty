@@ -8,9 +8,13 @@ import polars as pl
 class Wire:
     def __init__(self, name, width=1):
         self.name = name
-        self._data = ValueChange(width)
+        self._data = ValueChange()
+        # column-based dataframe of value changes
         self._data_df = pl.DataFrame()
+        self.last_val = 0
+        self.last_key = 0
 
+    # Used to get data from pyrtl - Not implementing yet
     @classmethod
     def from_data(cls, name, data, width=1):
         wire = cls(name=name, width=width)
@@ -21,8 +25,19 @@ class Wire:
             wire[key] = data[key]
         return wire
 
+    # Add value change to wire's df
     def __setitem__(self, key, value):
         self._data[key] = value
+        # Fill-in between values
+        for x in range(self.last_key + 1, key):
+            temp_vc = pl.DataFrame({str(x): [{'value': self.last_val},]})
+            self._data_df = pl.concat(
+                    [
+                        self._data_df, 
+                        temp_vc
+                    ],
+                    how="horizontal")
+        # Add new value
         temp_vc = pl.DataFrame({str(key): [{'value': value},]})
         self._data_df = pl.concat(
                 [
@@ -30,27 +45,42 @@ class Wire:
                     temp_vc
                 ],
                 how="horizontal")
+        # Set last key, value pair
+        self.last_val = value
+        self.last_key = key
         
+    # Gets value of wire at time (key)
     def __getitem__(self, key):
+        # return self._data.get(key)
         return self._data_df.get_column(str(key))[0]['value']
 
+    # Not called TODO: Test this
     def __delitem__(self, key):
-        del self._data[key]  # throws error if not present
+        # del self._data[key]  # throws error if not present
+        self._data_df.drop(key)
 
+    # TODO: Not sure why this is called, hardcoding to 1 for now
     def width(self):
-        return self._data.width
+        # return self._data.width
+        return 1
 
     def length(self):
         """Returns the time duration of the wire."""
-        return self._data.length()
+        #AKA: returns last time change
+        # return self._data.length()
+        return int(self._data_df.select(pl.last()).columns[0])
 
+    # Not called TODO: Test this
     def end(self):
         """Returns the final value on the wire"""
-        return self._data[self._data.length()]
+        return int(self._data_df.select(pl.last())[0]['value'])
 
+    # TODO: maybe just make a column with all the times that are on
     def times(self, length=0):
         """Returns a list of times with high value on the wire."""
-        return self._data.search(end=max(length, self.length()))
+        rtn_val = self._data.search(end=max(length, self.length()))
+        print("Name:", self.name, "ReturnVal:", rtn_val, "Data:",self._data)
+        return rtn_val
 
     @classmethod
     def const(cls, value):
