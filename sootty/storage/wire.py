@@ -59,7 +59,7 @@ class Wire:
         # del self._data[key]  # throws error if not present
         self._data_df.drop(key)
 
-    # TODO: Not sure why this is called, hardcoding to 1 for now
+    # TODO: Not sure why this is called, hardcoding to 1 for now - maybe bitwidth
     def width(self):
         # return self._data.width
         return 1
@@ -78,9 +78,19 @@ class Wire:
     # TODO: maybe just make a column with all the times that are on
     def times(self, length=0):
         """Returns a list of times with high value on the wire."""
-        rtn_val = self._data.search(end=max(length, self.length()))
-        print("Name:", self.name, "ReturnVal:", rtn_val, "Data:",self._data)
-        return rtn_val
+        # return self._data.search(end=max(length, self.length()))
+        
+        rtn_val_list = []
+
+        # Works as well as line below but not sure if is faster or not TODO: Test against line below
+        for col in self._data_df.select(pl.all()):
+            # print(col[0]['value'])
+            if col[0]['value'] == 1:
+                rtn_val_list.append(int(col.name))
+
+        # Works as well but not sure if is faster or not TODO: Test against line above
+        # rtn_val_list = [ int(col.name) for col in self._data_df.select(pl.all() == 1) if col.all() ]
+        return rtn_val_list
 
     @classmethod
     def const(cls, value):
