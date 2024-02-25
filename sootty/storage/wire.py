@@ -9,10 +9,7 @@ class Wire:
     def __init__(self, name, width=1):
         self.name = name
         self._data = ValueChange()
-        # column-based dataframe of value changes
-        self._data_df = pl.DataFrame()
-        self.last_val = 0
-        self.last_key = 0
+        self._data_df = pl.DataFrame(schema={"time": pl.Int64, "value": pl.String})
 
     # Used to get data from pyrtl - Not implementing yet
     @classmethod
@@ -28,69 +25,57 @@ class Wire:
     # Add value change to wire's df
     def __setitem__(self, key, value):
         self._data[key] = value
-        # Fill-in between values
-        for x in range(self.last_key + 1, key):
-            temp_vc = pl.DataFrame({str(x): [{'value': self.last_val},]})
-            self._data_df = pl.concat(
-                    [
-                        self._data_df, 
-                        temp_vc
-                    ],
-                    how="horizontal")
-        # Add new value
-        temp_vc = pl.DataFrame({str(key): [{'value': value},]})
+        temp_vc = pl.DataFrame({'time': [int(key)], 'value': [str(value)]})
         self._data_df = pl.concat(
                 [
                     self._data_df, 
                     temp_vc
                 ],
-                how="horizontal")
-        # Set last key, value pair
-        self.last_val = value
-        self.last_key = key
-        
+                how="vertical")
+
     # Gets value of wire at time (key)
     def __getitem__(self, key):
-        # return self._data.get(key)
-        return self._data_df.get_column(str(key))[0]['value']
+        print(self._data_df)
+        return self._data.get(key)
+        # return self._data_df.get_column(str(key))[0]['value']
 
     # Not called TODO: Test this
     def __delitem__(self, key):
-        # del self._data[key]  # throws error if not present
-        self._data_df.drop(key)
+        del self._data[key]  # throws error if not present
+        # self._data_df.drop(key)
 
     # TODO: Not sure why this is called, hardcoding to 1 for now - maybe bitwidth
     def width(self):
-        # return self._data.width
-        return 1
+        return self._data.width
+        # return 1
 
     def length(self):
         """Returns the time duration of the wire."""
         #AKA: returns last time change
-        # return self._data.length()
-        return int(self._data_df.select(pl.last()).columns[0])
+        return self._data.length()
+        # return int(self._data_df.select(pl.last()).columns[0])
 
     # Not called TODO: Test this
     def end(self):
         """Returns the final value on the wire"""
-        return int(self._data_df.select(pl.last())[0]['value'])
+        return self._data[self._data.length()]
+        # return int(self._data_df.select(pl.last())[0]['value'])
 
     # TODO: maybe just make a column with all the times that are on
     def times(self, length=0):
         """Returns a list of times with high value on the wire."""
-        # return self._data.search(end=max(length, self.length()))
-        
-        rtn_val_list = []
+        return self._data.search(end=max(length, self.length()))
+        # rtn_val_list = []
 
-        # Works as well as line below but not sure if is faster or not TODO: Test against line below
-        for col in self._data_df.select(pl.all()):
-            # print(col[0]['value'])
-            if col[0]['value'] == 1:
-                rtn_val_list.append(int(col.name))
+        # # Works as well as line below but not sure if is faster or not TODO: Test against line below
+        # for col in self._data_df.select(pl.all()):
+        #     # print(col[0]['value'])
+        #     if col[0]['value'] == 1:
+        #         rtn_val_list.append(int(col.name))
 
-        # Works as well but not sure if is faster or not TODO: Test against line above
-        # rtn_val_list = [ int(col.name) for col in self._data_df.select(pl.all() == 1) if col.all() ]
-        return rtn_val_list
+        # # Works as well but not sure if is faster or not TODO: Test against line above
+        # # rtn_val_list = [ int(col.name) for col in self._data_df.select(pl.all() == 1) if col.all() ]
+        # return rtn_val_list
 
     @classmethod
     def const(cls, value):
