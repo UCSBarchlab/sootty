@@ -35,7 +35,13 @@ class Wire:
 
     # Gets value of wire at time (key)
     def __getitem__(self, key):
+<<<<<<< Updated upstream
         print(self._data_df)
+=======
+        #self.data.filter(pl.col('time') = key)
+        print(self._data_df.row(by_predicate=(pl.col("time") == key)))
+        # print(self._data_df.select(pl.col("time")) < key)
+>>>>>>> Stashed changes
         return self._data.get(key)
         # return self._data_df.get_column(str(key))[0]['value']
 
