@@ -2,16 +2,16 @@ from itertools import compress, chain
 
 from ..exceptions import *
 from .valuechange import ValueChange
+import polars as pl
 
 
 class Wire:
     def __init__(self, name, width=1):
         self.name = name
-        self._data = ValueChange(width) # _ means data is private and can only be modified through mehtods of wire class
+        self._data = ValueChange(width)
+        self._data_df = pl.DataFrame()
 
-    @classmethod #class method indiciates from_data is a class method.
-    #class method take cls as their first arguemnt instead of self and can be called on the class itself
-    #cls = Wire class
+    @classmethod
     def from_data(cls, name, data, width=1):
         wire = cls(name=name, width=width) #create new instance of Wire called wire
         #compres(...) identifies the indices in data where value changes from previous data
@@ -25,16 +25,23 @@ class Wire:
             wire[key] = data[key]
         return wire
 
-    def __setitem__(self, time, value):
-        self._data.add_change(time, value)
+    def __setitem__(self, key, value):
+        self._data[key] = value
+        temp_vc = pl.DataFrame({str(key): [{'value': value},]})
+        self._data_df = pl.concat(
+                [
+                    self._data_df, 
+                    temp_vc
+                ],
+                how="horizontal")
+        
+    def __getitem__(self, key):
+        return self._data_df.get_column(str(key))[0]['value']
 
-    def __getitem__(self, time): 
-        return self._data.get(time)
+    def __delitem__(self, key):
+        del self._data[key]  # throws error if not present
 
-    def __delitem__(self, key): #fix
-        del self._data[key]  # throws error if not present #change here
-
-    def width(self): 
+    def width(self):
         return self._data.width
 
     def length(self):
@@ -42,12 +49,8 @@ class Wire:
         return self._data.length()
 
     def end(self):
-        """Returns the final value on the wire""" 
-        return self._data[self._data.length()] #fix
-       
-        # max_time = self._data.length()
-        # final_value_row = self.data.data.filter(pl.col('time') == max_time)
-        # return final_value_row['value']
+        """Returns the final value on the wire"""
+        return self._data[self._data.length()]
 
     def times(self, length=0):
         """Returns a list of times with high value on the wire."""
@@ -194,5 +197,5 @@ class Wire:
 
     def _acc(self):
         wire = Wire(name="acc " + self.name)
-        #wire._data = self._data._acc()
+        wire._data = self._data._acc()
         return wire

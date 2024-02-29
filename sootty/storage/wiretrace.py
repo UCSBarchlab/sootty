@@ -101,7 +101,10 @@ class WireTrace:
                     break  # end of definitions
                 elif token.kind is TokenKind.SCOPE: #see scope, add group(containing scope), add to top of stack
                     #print("this the scope:", token.scope.ident)
-                    group = WireGroup(token.scope.ident) #group contains the name of the scope, which contains wires, which is all in a wiregroup object
+                    #group = WireGroup(token.scope.ident) group contains the name of the scope, which contains wires, which is all in a wiregroup object
+                    prepend_name = ''
+                    prepend_name += stack[-1].name + '.' + token.scope.ident
+                    group = WireGroup(prepend_name)
                     stack[-1].add_group(group) #add new group to last index of the list, which is the top of stack 
                     stack.append(group) #add the group to the stack
                 elif token.kind is TokenKind.TIMESCALE:
@@ -114,6 +117,7 @@ class WireTrace:
                     if token.var.id_code in wires: #if ASCI already exists in wires dict
                         # Used if wire is in multiple groups?
                         # wire_groups[token.var.id_code].append(stack[-1].name)
+                        #prepending the name here based on stack[-1] value is
                         stack[-1].add_wire(wires[token.var.id_code]) #idk why we are adding wire object to the wiregroup/scope that has a repeated idenitifer to top of stack
                     else:
                         wire = Wire( #create new a wire if it is unique ASCI

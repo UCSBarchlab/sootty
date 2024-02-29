@@ -149,7 +149,7 @@ def main():
         else:
             start = 0
         length = length if length is not None else wiretrace.length() - start
-
+    print("Starttime:", start , "endtime:", end)
     # Calculate breakpoints
     if breakpoints is not None:
         breakpoints = wiretrace.evaluate(breakpoints)
