@@ -2,28 +2,41 @@ from itertools import compress, chain
 
 from ..exceptions import *
 from .valuechange import ValueChange
+import polars as pl
 
 
 class Wire:
     def __init__(self, name, width=1):
         self.name = name
         self._data = ValueChange(width)
+        self._data_df = pl.DataFrame()
 
     @classmethod
     def from_data(cls, name, data, width=1):
-        wire = cls(name=name, width=width)
+        wire = cls(name=name, width=width) #create new instance of Wire called wire
+        #compres(...) identifies the indices in data where value changes from previous data
+        #zip(): creates pairs of consecutive elements in data, starting with None
+        #map: creates boolean array where true indicates change in value
+        #compress(range): use this array to filter indices in data where changes occur
         for key in compress(
             range(len(data)),
-            map(lambda pair: pair[0] != pair[1], zip(chain([None], data), data)),
+            map(lambda pair: pair[0] != pair[1], zip(chain([None], data), data)), #zip combines multiple interables into tuples, chain combined multiple iterables into single interable, 
         ):
             wire[key] = data[key]
         return wire
 
     def __setitem__(self, key, value):
         self._data[key] = value
-
+        temp_vc = pl.DataFrame({str(key): [{'value': value},]})
+        self._data_df = pl.concat(
+                [
+                    self._data_df, 
+                    temp_vc
+                ],
+                how="horizontal")
+        
     def __getitem__(self, key):
-        return self._data.get(key)
+        return self._data_df.get_column(str(key))[0]['value']
 
     def __delitem__(self, key):
         del self._data[key]  # throws error if not present

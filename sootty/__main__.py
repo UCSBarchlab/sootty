@@ -1,8 +1,10 @@
 import argparse
 import sys
+import polars as pl
 
 from .exceptions import SoottyError
 from .save import save_query, reload_query
+from .storage import Wire
 from .storage import WireTrace
 from .visualizer import Visualizer
 
@@ -147,7 +149,7 @@ def main():
         else:
             start = 0
         length = length if length is not None else wiretrace.length() - start
-
+    print("Starttime:", start , "endtime:", end)
     # Calculate breakpoints
     if breakpoints is not None:
         breakpoints = wiretrace.evaluate(breakpoints)
@@ -176,6 +178,5 @@ def main():
 
     if btable:
         wiretrace.print_breakpoints(breakpoints)
-
 if __name__ == "__main__":
     main()
