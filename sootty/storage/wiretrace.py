@@ -279,9 +279,13 @@ class WireTrace:
         elif node.data.type == "ACC":
             return self._compute_wire(node.children[0])._acc()
         elif node.data.type == "CONST":
-            return Wire.const(int(node.children[0]))
+            print("CONST NOT IMPLEMENTED")
+            # return Wire.const(int(node.children[0]))
+            # TODO: Implement
+            return
         elif node.data.type == "TIME":
             return Wire.time(int(node.children[0]))
+
 
     def compute_wire(self, expr: str):
         """Evaluate a limit expression to a wire."""
