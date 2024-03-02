@@ -8,12 +8,14 @@ import polars as pl
 class Wire:
     def __init__(self, name, width=1):
         self.name = name
-        self._data = ValueChange()
-        self._data_df = pl.DataFrame(schema={"time": pl.Int64, "value": pl.String})
+        self.bit_width = width
+        self._data = ValueChange(width)
+        self._data_df = pl.LazyFrame(schema={"time": pl.Int64, "value": pl.String})
 
     # Used to get data from pyrtl - Not implementing yet
     @classmethod
     def from_data(cls, name, data, width=1):
+        cls.bit_width = width
         wire = cls(name=name, width=width)
         for key in compress(
             range(len(data)),
@@ -25,7 +27,7 @@ class Wire:
     # Add value change to wire's df
     def __setitem__(self, key, value):
         self._data[key] = value
-        temp_vc = pl.DataFrame({'time': [int(key)], 'value': [str(value)]})
+        temp_vc = pl.LazyFrame({'time': [int(key)], 'value': [str(value)]})
         self._data_df = pl.concat(
                 [
                     self._data_df, 
@@ -35,25 +37,19 @@ class Wire:
 
     # Gets value of wire at time (key)
     def __getitem__(self, key):
-<<<<<<< Updated upstream
-        print(self._data_df)
-=======
-        #self.data.filter(pl.col('time') = key)
-        print(self._data_df.row(by_predicate=(pl.col("time") == key)))
-        # print(self._data_df.select(pl.col("time")) < key)
->>>>>>> Stashed changes
-        return self._data.get(key)
-        # return self._data_df.get_column(str(key))[0]['value']
+        return self._data_df.filter(pl.col("time") <= key).last().select(pl.col("value")).collect().item()
+        # return self._data.get(key)
 
     # Not called TODO: Test this
     def __delitem__(self, key):
-        del self._data[key]  # throws error if not present
-        # self._data_df.drop(key)
+        # del self._data[key]  # throws error if not present
+        self._data_df.drop(key)
 
     # TODO: Not sure why this is called, hardcoding to 1 for now - maybe bitwidth
     def width(self):
-        return self._data.width
-        # return 1
+        print(self._data_df.collect())
+        return self.bit_width
+        # return self._data.width
 
     def length(self):
         """Returns the time duration of the wire."""
