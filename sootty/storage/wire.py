@@ -2,6 +2,7 @@ from itertools import compress, chain
 
 from ..exceptions import *
 from .valuechange import ValueChange
+from sortedcontainers import SortedDict, SortedList, SortedSet
 import polars as pl
 
 
@@ -80,19 +81,20 @@ class Wire:
     # TODO: test this with returns that are more than one value (not just [20], instead like [20, 22])
     def times(self, length=0):
         """Returns a list of times with high value on the wire."""
-        value = self._data_df.filter(pl.col("value") > 0).collect().select(pl.col("time")).rows()
-        if len(value) > 0:
-            # cast the tuple to a list
-            return list(value[0])
-        else:
-            return []
+        value = self._data_df.filter(pl.col("value") > 0).collect().get_column("time").to_list()
+        print("value", value)
+        # if len(value) > 0:
+        #     # cast the tuple to a list
+        #     return value
+        # else:
+        return value
         # return self._data.search(end=max(length, self.length()))
 
     # TODO: Not implemented
     @classmethod
     def const(cls, value):
         wire = cls(name=f"c_{value}", width=0)
-        # wire[0] = value
+        wire[0] = value
         wire.init_val = value
         return wire
 
@@ -151,11 +153,15 @@ class Wire:
         return wire
 
     def __eq__(self, other):
-        print("In eq")
+        print("wire self:", self.name, self.init_val, self._data_df.collect(), "wire other:", other.name, other.init_val, other._data_df.collect())
         wire = Wire(name="(" + self.name + " == " + other.name + ")")
+
+        # # self._binop(other, lambda x, y: int(x == y), 1)
+        # self._binop(self, other, lambda x, y: int(x == y), 1)
+        
         wire._data = self._data.__eq__(other._data)
         return wire
-
+ 
     def __ne__(self, other):
         wire = Wire(name="(" + self.name + " != " + other.name + ")")
         wire._data = self._data.__ne__(other._data)
@@ -240,3 +246,51 @@ class Wire:
         wire = Wire(name="acc " + self.name)
         wire._data = self._data._acc()
         return wire
+    
+    def get_all_times(self):
+        return self._data_df.collect().get_column("time").to_list()
+
+    def _binop(self, other, binop, width, xz_flag=0):
+            data = ValueChange(width=width) 
+            keys = SortedSet()
+            keys.update(self.get_all_times())
+            keys.update(other.get_all_times())
+            values = [None, None, None]
+            print("data:", data)
+            print("keys:", keys)
+            print("values:", values)
+            print("self:", self)
+            print("other:", other)
+            print("binop:", binop)
+            print("width:", width)
+            print("xz_flag:", xz_flag)
+
+            for key in keys:
+                reduced = None
+                if key in self._data_df:
+                    values[0] = self[key]
+                if key in other._data_df:
+                    values[1] = other[key]
+                if xz_flag == 1:
+                    if values[0] == 0 or values[1] == 0:  # xz = 1 is logical and
+                        reduced = 0
+                if xz_flag == 2:  # xz = 2 is logical or
+                    if values[0] == 1 or values[1] == 1:
+                        reduced = 1
+                print("reduced:",reduced)
+                if reduced is None:
+                    reduced = (
+                        None
+                        if (
+                            (values[0] is None or values[1] is None)
+                            or (type(values[0]) == str)
+                            or (type(values[1]) == str)
+                        )
+                        else binop(values[0], values[1])
+                    )
+                if reduced != values[2]:
+                    values[2] = reduced
+                    data[key] = reduced
+                print("Values[", key, "]: ",values)
+            print("return data:",data)
+            return data

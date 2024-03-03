@@ -65,11 +65,20 @@ class ValueChange(SortedDict):
         return not (self.width)
 
     def _binop(self, other, binop, width, xz_flag=0):
-        data = ValueChange(width=width)
+        data = ValueChange(width=width) 
         keys = SortedSet()
         keys.update(self.keys())
         keys.update(other.keys())
         values = [None, None, None]
+        print("data:", data)
+        print("keys:", keys)
+        print("values:", values)
+        print("self:", self)
+        print("other:", other)
+        print("binop:", binop)
+        print("width:", width)
+        print("xz_flag:", xz_flag)
+
         for key in keys:
             reduced = None
             if key in self:
@@ -82,6 +91,7 @@ class ValueChange(SortedDict):
             if xz_flag == 2:  # xz = 2 is logical or
                 if values[0] == 1 or values[1] == 1:
                     reduced = 1
+            print("reduced:",reduced)
             if reduced is None:
                 reduced = (
                     None
@@ -95,6 +105,8 @@ class ValueChange(SortedDict):
             if reduced != values[2]:
                 values[2] = reduced
                 data[key] = reduced
+            print("Values[", key, "]: ",values)
+        print("return data:",data)
         return data
 
     def __and__(self, other):

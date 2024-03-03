@@ -279,10 +279,8 @@ class WireTrace:
         elif node.data.type == "ACC":
             return self._compute_wire(node.children[0])._acc()
         elif node.data.type == "CONST":
-            print("CONST NOT IMPLEMENTED")
-            # return Wire.const(int(node.children[0]))
-            # TODO: Implement
-            return
+            wire = Wire.const(int(node.children[0]))
+            return wire
         elif node.data.type == "TIME":
             return Wire.time(int(node.children[0]))
 
