@@ -158,8 +158,10 @@ class Wire:
         return wire
  
     def __ne__(self, other):
+        print("In NE")
         wire = Wire(name="(" + self.name + " != " + other.name + ")")
-        wire._data = self._data.__ne__(other._data)
+        # wire._data = self._data.__ne__(other._data)
+        wire._binop(self, other, lambda x, y: int(x != y), 1)
         return wire
 
     def __gt__(self, other):
@@ -248,17 +250,26 @@ class Wire:
     def change_at_time(self, key):
         # check if key exists in dataframe
         value = self._data_df.filter(pl.col("time") == key).last().select(pl.col("value")).collect()
-        if value.is_empty():
+        if key == 0:
+            print("key is zero")
+            return True
+        elif value.is_empty():
             return False
         else:
             return True
 
     def _binop(self, first, other, binop, width, xz_flag=0): 
-            print("first name:", first.name, "other name:", other.name)
+            print("first name:", first.name, first._data_df.collect())
+            print("other name:", other.name, other._data_df.collect())
             keys = SortedSet()
             keys.update(first.get_all_times())
             keys.update(other.get_all_times())
-            values = [first.init_val, other.init_val, binop(first.init_val, other.init_val)]
+            # Add 0th index if applicable here
+            if (isinstance(first.init_val, int)) and (isinstance(other.init_val, int)):
+                keys.update([0])
+
+            values = [None, None, None]
+            print(keys)
 
             for key in keys:
                 reduced = None
@@ -266,14 +277,15 @@ class Wire:
                     values[0] = first.__getitem__(key)
                     # values[0] = first[key]
                 if other.change_at_time(key):
+                    print("Changing")
                     values[1] = other.__getitem__(key)
                     # values[1] = other[key]
                 if xz_flag == 1:
-                    print("xz_flag:", xz_flag)
+                    # print("xz_flag:", xz_flag)
                     if values[0] == 0 or values[1] == 0:  # xz = 1 is logical and
                         reduced = 0
                 if xz_flag == 2:  # xz = 2 is logical or
-                    print("xz_flag:", xz_flag)
+                    # print("xz_flag:", xz_flag)
                     if values[0] == 1 or values[1] == 1:
                         reduced = 1
                 if reduced is None:
@@ -287,12 +299,16 @@ class Wire:
                         else binop(values[0], values[1])
                     )
                 print("reduced:",reduced, "values[2]", values[2])
-                if reduced == 1 and values[2] == 0:
+                if reduced != values[2]:
                     values[2] = reduced
                     self._data[key] = reduced
                     self.__setitem__(key, 1)
-                if reduced == 0:
-                    values[2] = reduced
+                # if reduced == 1 and values[2] == 0:
+                #     values[2] = reduced
+                #     self._data[key] = reduced
+                #     self.__setitem__(key, 1)
+                # if reduced == 0:
+                #     values[2] = reduced
                 print("Values[", key, "]: ",values)
             print("return data:",self._data)
             print("return data:",self._data_df.collect())
