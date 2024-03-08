@@ -76,7 +76,6 @@ class ValueChange(SortedDict):
         print("self:", self)
         print("other:", other)
         print("binop:", binop)
-        print("width:", width)
         print("xz_flag:", xz_flag)
 
         for key in keys:

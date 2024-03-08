@@ -81,8 +81,13 @@ class Wire:
     # TODO: test this with returns that are more than one value (not just [20], instead like [20, 22])
     def times(self, length=0):
         """Returns a list of times with high value on the wire."""
-        value = self._data_df.filter(pl.col("value") > 0).collect().get_column("time").to_list()
-        print("value", value)
+        value = []
+        if(self.init_val == 1):
+            value = [0]
+
+        value += self._data_df.filter(pl.col("value") > 0).collect().get_column("time").to_list()
+
+        # print("Wire:", self.name, "value:", value)
         # if len(value) > 0:
         #     # cast the tuple to a list
         #     return value
@@ -152,51 +157,67 @@ class Wire:
         wire._data = self._data._to_bool().__or__(other._data._to_bool())
         return wire
 
+    ## UPDATED SUCCESSFULLY
     def __eq__(self, other):
         wire = Wire(name="(" + self.name + " == " + other.name + ")")
         wire._binop(self, other, lambda x, y: int(x == y), 1) # passing in self to "first" parameter in binop
         return wire
  
+    ## UPDATED SUCCESSFULLY
     def __ne__(self, other):
-        print("In NE")
         wire = Wire(name="(" + self.name + " != " + other.name + ")")
         # wire._data = self._data.__ne__(other._data)
         wire._binop(self, other, lambda x, y: int(x != y), 1)
         return wire
 
+    ## UPDATED SUCCESSFULLY
     def __gt__(self, other):
         wire = Wire(name="(" + self.name + " > " + other.name + ")")
-        wire._data = self._data.__gt__(other._data)
+        # wire._data = self._data.__gt__(other._data)
+        wire._binop(self, other, lambda x, y: int(x > y), 1)
         return wire
-
+    
+    ## UPDATED SUCCESSFULLY
     def __ge__(self, other):
         wire = Wire(name="(" + self.name + " >= " + other.name + ")")
-        wire._data = self._data.__ge__(other._data)
+        # wire._data = self._data.__ge__(other._data)
+        wire._binop(self, other, lambda x, y: int(x >= y), 1)
         return wire
 
+    ## UPDATED SUCCESSFULLY
     def __lt__(self, other):
         wire = Wire(name="(" + self.name + " < " + other.name + ")")
-        wire._data = self._data.__lt__(other._data)
+        # wire._data = self._data.__lt__(other._data)
+        wire._binop(self, other, lambda x, y: int(x < y), 1)
         return wire
 
+    ## UPDATED SUCCESSFULLY
     def __le__(self, other):
         wire = Wire(name="(" + self.name + " <= " + other.name + ")")
-        wire._data = self._data.__le__(other._data)
+        # wire._data = self._data.__le__(other._data)
+        wire._binop(self, other, lambda x, y: int(x <= y), 1)
         return wire
 
+    ## UPDATED SUCCESSFULLY
+    # Example Query: sootty "example/example1.vcd" -l 8 -s "Data << const 2 == const 1" -w "D1,D0,Data"
     def __lshift__(self, other):
         wire = Wire(name="(" + self.name + " << " + other.name + ")")
-        wire._data = self._data.__lshift__(other._data)
+        # wire._data = self._data.__lshift__(other._data)
+        wire._binop(self, other, lambda x, y: int(x << y), self.bit_width)
         return wire
-
+    
+    ## UPDATED SUCCESSFULLY
     def __rshift__(self, other):
         wire = Wire(name="(" + self.name + " >> " + other.name + ")")
-        wire._data = self._data.__rshift__(other._data)
+        # wire._data = self._data.__rshift__(other._data)
+        wire._binop(self, other, lambda x, y: int(x >> y), self.bit_width)
         return wire
 
     def __add__(self, other):
         wire = Wire(name="(" + self.name + " + " + other.name + ")")
-        wire._data = self._data.__add__(other._data)
+        # wire._data = self._data.__add__(other._data)
+        # print("self width: ")
+        wire._binop(self, other, lambda x, y: x + y, max(self.width, other.width) + 1)
         return wire
 
     def __sub__(self, other):
@@ -251,7 +272,6 @@ class Wire:
         # check if key exists in dataframe
         value = self._data_df.filter(pl.col("time") == key).last().select(pl.col("value")).collect()
         if key == 0:
-            print("key is zero")
             return True
         elif value.is_empty():
             return False
@@ -259,8 +279,10 @@ class Wire:
             return True
 
     def _binop(self, first, other, binop, width, xz_flag=0): 
-            print("first name:", first.name, first._data_df.collect())
-            print("other name:", other.name, other._data_df.collect())
+            # print("first name:", first.name, first._data_df.collect())
+            # print("other name:", other.name, other._data_df.collect())
+            self._data = ValueChange(width=width)
+            self.bit_width = width
             keys = SortedSet()
             keys.update(first.get_all_times())
             keys.update(other.get_all_times())
@@ -269,7 +291,6 @@ class Wire:
                 keys.update([0])
 
             values = [None, None, None]
-            print(keys)
 
             for key in keys:
                 reduced = None
@@ -277,7 +298,6 @@ class Wire:
                     values[0] = first.__getitem__(key)
                     # values[0] = first[key]
                 if other.change_at_time(key):
-                    print("Changing")
                     values[1] = other.__getitem__(key)
                     # values[1] = other[key]
                 if xz_flag == 1:
@@ -298,17 +318,19 @@ class Wire:
                         )
                         else binop(values[0], values[1])
                     )
-                print("reduced:",reduced, "values[2]", values[2])
+                # print("reduced:",reduced, "values[2]", values[2])
                 if reduced != values[2]:
                     values[2] = reduced
                     self._data[key] = reduced
-                    self.__setitem__(key, 1)
+                    # print("adding key to df: ", key)
+                    self.__setitem__(key, reduced)
                 # if reduced == 1 and values[2] == 0:
                 #     values[2] = reduced
                 #     self._data[key] = reduced
                 #     self.__setitem__(key, 1)
                 # if reduced == 0:
                 #     values[2] = reduced
-                print("Values[", key, "]: ",values)
-            print("return data:",self._data)
-            print("return data:",self._data_df.collect())
+            #     print("Values[", key, "]: ",values)
+            # print("return data:",self._data)
+            # print("return data:",self._data_df.collect())
+            # print("return data init_val:", self.init_val)
