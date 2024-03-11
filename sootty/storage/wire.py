@@ -5,6 +5,14 @@ from .valuechange import ValueChange
 from sortedcontainers import SortedDict, SortedList, SortedSet
 import polars as pl
 
+def flip_each_bit(value, width):
+    return int(~(value)) & (2 << width - 1) - 1
+
+def to_bool_helper(value):
+    if(value > 0):
+        return 1
+    else:
+        return 0
 
 class Wire:
     def __init__(self, name, width=1):
@@ -117,9 +125,14 @@ class Wire:
 
         return wire
 
+
+    ## UPDATED SUCCESSFULLY
     def __invert__(self):
         wire = Wire(name="~" + self.name)
-        wire._data = self._data.__invert__()
+        wire.bit_width = self.bit_width
+        wire._data_df = self._data_df.with_columns((pl.col("value").apply(lambda x: flip_each_bit(x, wire.bit_width), return_dtype= pl.UInt64)))
+
+        wire._data = self._data.__invert__() # Old, TODO: delete later
         return wire
 
     def __neg__(self):
@@ -127,21 +140,33 @@ class Wire:
         wire._data = self._data.__invert__()
         return wire
 
+    ## UPDATED SUCCESSFULLY
     def __and__(self, other):
         wire = Wire(name="(" + self.name + " & " + other.name + ")")
-        wire._data = self._data.__and__(other._data)
+        # wire._data = self._data.__and__(other._data)
+        wire._binop(self, other, lambda x, y: x & y, max(self.bit_width, other.bit_width), 1)
         return wire
 
+    ## UPDATED SUCCESSFULLY
     def __or__(self, other):
         wire = Wire(name="(" + self.name + " | " + other.name + ")")
-        wire._data = self._data.__or__(other._data)
+        # wire._data = self._data.__or__(other._data)
+        wire._binop(self, other, lambda x, y: x | y, max(self.bit_width, other.bit_width), 2)
         return wire
 
+    ## UPDATED SUCCESSFULLY
     def __xor__(self, other):
         wire = Wire(name="(" + self.name + " ^ " + other.name + ")")
-        wire._data = self._data.__xor__(other._data)
+        # wire._data = self._data.__xor__(other._data)
+        wire._binop(self, other, lambda x, y: x ^ y, max(self.bit_width, other.bit_width))
         return wire
+    
+    #Change(from valuechange.py)
+    def _to_bool(self):
+        self._data_df = self._data_df.with_columns((pl.col("value").apply(lambda x: to_bool_helper(x), return_dtype= pl.Int64)))
 
+
+    #! not working on all terminals? TODO: ask Balkind
     def _logical_not(self):
         wire = Wire(name="!" + self.name)
         wire._data = self._data._to_bool().__invert__()
@@ -149,7 +174,23 @@ class Wire:
 
     def _logical_and(self, other):
         wire = Wire(name="(" + self.name + " && " + other.name + ")")
+        wire._data_df = self._data_df
+
+        # Add temporary copy of other
+        temp_wire = Wire(name=other.name)
+        temp_wire._data_df = other._data_df
+
+        # New Query
+        # wire._data_df = wire._to_bool().__and__(temp_wire._to_bool())
+        wire._to_bool()
+        temp_wire._to_bool()
+        wire.__and__(temp_wire)
+
+        print("PRINT DATADF: ", wire._data_df.collect())
+
+        # Old Query TODO: delete later
         wire._data = self._data._to_bool().__and__(other._data._to_bool())
+        print("CORRECT OUTPUT: ", wire._data)
         return wire
 
     def _logical_or(self, other):
@@ -212,24 +253,30 @@ class Wire:
         # wire._data = self._data.__rshift__(other._data)
         wire._binop(self, other, lambda x, y: int(x >> y), self.bit_width)
         return wire
-
+    
+    ## UPDATED SUCCESSFULLY
     def __add__(self, other):
         wire = Wire(name="(" + self.name + " + " + other.name + ")")
         # wire._data = self._data.__add__(other._data)
         # print("self width: ")
-        wire._binop(self, other, lambda x, y: x + y, max(self.width, other.width) + 1)
+        wire._binop(self, other, lambda x, y: x + y, max(self.bit_width, other.bit_width) + 1)
         return wire
 
+    ## UPDATED SUCCESSFULLY
     def __sub__(self, other):
         wire = Wire(name="(" + self.name + " - " + other.name + ")")
-        wire._data = self._data.__sub__(other._data)
+        # wire._data = self._data.__sub__(other._data)
+        wire._binop(self, other, lambda x, y: x - y, max(self.bit_width, other.bit_width) + 1)
         return wire
 
+    ## UPDATED SUCCESSFULLY
     def __mod__(self, other):
         wire = Wire(name="(" + self.name + " % " + other.name + ")")
-        wire._data = self._data.__mod__(other._data)
+        # wire._data = self._data.__mod__(other._data)
+        wire._binop(self, other, lambda x, y: x % y, self.bit_width)
         return wire
 
+######### NOT IMPLEMENTING - Start #########
     def _from(self):
         wire = Wire(name="from " + self.name)
         wire._data = self._data._from()
@@ -264,7 +311,8 @@ class Wire:
         wire = Wire(name="acc " + self.name)
         wire._data = self._data._acc()
         return wire
-    
+    ######### NOT IMPLEMENTING - End #########
+
     def get_all_times(self):
         return self._data_df.collect().get_column("time").to_list()
     

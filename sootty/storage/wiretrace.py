@@ -265,18 +265,25 @@ class WireTrace:
                 node.children[1]
             )
         elif node.data.type == "FROM":
+            raise SoottyError(f"Breakpoints not implemented - FROM")
             return self._compute_wire(node.children[0])._from()
         elif node.data.type == "AFTER":
+            raise SoottyError(f"Breakpoints not implemented - AFTER")
             return self._compute_wire(node.children[0])._after()
         elif node.data.type == "UNTIL":
+            raise SoottyError(f"Breakpoints not implemented - UNTIL")
             return self._compute_wire(node.children[0])._until()
         elif node.data.type == "BEFORE":
+            raise SoottyError(f"Breakpoints not implemented - BEFORE")
             return self._compute_wire(node.children[0])._before()
         elif node.data.type == "NEXT":
+            raise SoottyError(f"Breakpoints not implemented - NEXT")
             return self._compute_wire(node.children[0])._next()
         elif node.data.type == "PREV":
+            raise SoottyError(f"Breakpoints not implemented - PREV")
             return self._compute_wire(node.children[0])._prev()
         elif node.data.type == "ACC":
+            raise SoottyError(f"Breakpoints not implemented - ACC")
             return self._compute_wire(node.children[0])._acc()
         elif node.data.type == "CONST":
             wire = Wire.const(int(node.children[0]))
