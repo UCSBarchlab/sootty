@@ -37,6 +37,7 @@ class Wire:
     # Add value change to wire's df
     def __setitem__(self, key, value):
         if(key == 0):
+            self._data[key] = value
             self.init_val = value
         else:
             self._data[key] = value
@@ -103,7 +104,6 @@ class Wire:
         return value
         # return self._data.search(end=max(length, self.length()))
 
-    # TODO: Not implemented
     @classmethod
     def const(cls, value):
         wire = cls(name=f"c_{value}", width=0)
@@ -163,6 +163,7 @@ class Wire:
     
     #Change(from valuechange.py)
     def _to_bool(self):
+        self.init_val = to_bool_helper(self.init_val)
         self._data_df = self._data_df.with_columns((pl.col("value").apply(lambda x: to_bool_helper(x), return_dtype= pl.Int64)))
 
 
@@ -172,29 +173,48 @@ class Wire:
         wire._data = self._data._to_bool().__invert__()
         return wire
 
+    ## UPDATED SUCCESSFULLY
     def _logical_and(self, other):
         wire = Wire(name="(" + self.name + " && " + other.name + ")")
+        wire.init_val = self.init_val
         wire._data_df = self._data_df
+        wire.bit_width = self.bit_width
 
         # Add temporary copy of other
         temp_wire = Wire(name=other.name)
+        temp_wire.init_val = other.init_val
         temp_wire._data_df = other._data_df
+        temp_wire.bit_width = self.bit_width
 
         # New Query
-        # wire._data_df = wire._to_bool().__and__(temp_wire._to_bool())
         wire._to_bool()
         temp_wire._to_bool()
-        wire.__and__(temp_wire)
+        wire = wire.__and__(temp_wire)
 
-        print("PRINT DATADF: ", wire._data_df.collect())
 
         # Old Query TODO: delete later
-        wire._data = self._data._to_bool().__and__(other._data._to_bool())
-        print("CORRECT OUTPUT: ", wire._data)
+        # wire._data = self._data._to_bool().__and__(other._data._to_bool())
         return wire
 
+    ## UPDATED SUCCESSFULLY
     def _logical_or(self, other):
         wire = Wire(name="(" + self.name + " || " + other.name + ")")
+        wire.init_val = self.init_val
+        wire._data_df = self._data_df
+        wire.bit_width = self.bit_width
+
+        # Add temporary copy of other
+        temp_wire = Wire(name=other.name)
+        temp_wire.init_val = other.init_val
+        temp_wire._data_df = other._data_df
+        temp_wire.bit_width = self.bit_width
+
+        # New Query
+        wire._to_bool()
+        temp_wire._to_bool()
+        wire = wire.__or__(temp_wire)
+
+        # Old Query TODO: delete later
         wire._data = self._data._to_bool().__or__(other._data._to_bool())
         return wire
 
@@ -313,9 +333,11 @@ class Wire:
         return wire
     ######### NOT IMPLEMENTING - End #########
 
+    ## UPDATED SUCCESSFULLY
     def get_all_times(self):
         return self._data_df.collect().get_column("time").to_list()
     
+    ## UPDATED SUCCESSFULLY
     def change_at_time(self, key):
         # check if key exists in dataframe
         value = self._data_df.filter(pl.col("time") == key).last().select(pl.col("value")).collect()
@@ -326,9 +348,8 @@ class Wire:
         else:
             return True
 
+    ## UPDATED SUCCESSFULLY
     def _binop(self, first, other, binop, width, xz_flag=0): 
-            # print("first name:", first.name, first._data_df.collect())
-            # print("other name:", other.name, other._data_df.collect())
             self._data = ValueChange(width=width)
             self.bit_width = width
             keys = SortedSet()
@@ -344,6 +365,7 @@ class Wire:
                 reduced = None
                 if first.change_at_time(key):
                     values[0] = first.__getitem__(key)
+                    #print("value")
                     # values[0] = first[key]
                 if other.change_at_time(key):
                     values[1] = other.__getitem__(key)
@@ -366,12 +388,13 @@ class Wire:
                         )
                         else binop(values[0], values[1])
                     )
-                # print("reduced:",reduced, "values[2]", values[2])
+                # print("key:", key, "first wire:", values[0], "other wire:", values[1], "values[2]: ", values[2], "reduced:",reduced)
                 if reduced != values[2]:
                     values[2] = reduced
                     self._data[key] = reduced
                     # print("adding key to df: ", key)
                     self.__setitem__(key, reduced)
+                    # print("Data frame after adding:", self._data_df.collect())
                 # if reduced == 1 and values[2] == 0:
                 #     values[2] = reduced
                 #     self._data[key] = reduced
