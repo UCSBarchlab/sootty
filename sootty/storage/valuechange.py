@@ -65,11 +65,12 @@ class ValueChange(SortedDict):
         return not (self.width)
 
     def _binop(self, other, binop, width, xz_flag=0):
-        data = ValueChange(width=width)
+        data = ValueChange(width=width) 
         keys = SortedSet()
         keys.update(self.keys())
         keys.update(other.keys())
         values = [None, None, None]
+
         for key in keys:
             reduced = None
             if key in self:
