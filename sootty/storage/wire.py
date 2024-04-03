@@ -51,14 +51,12 @@ class Wire:
 
     # Gets value of wire at time (key)
     def __getitem__(self, key):
-        # print("before:", self.name, key)
-        value = self._data_df.filter(pl.col("time") <= key).last().select(pl.col("value")).collect()
-        # print("after")
-        if value.is_empty():
-            return self.init_val
+        filtered = self._data_df.collect().filter(pl.col("time") <= key)
+        height = filtered.height
+        if(height > 0):
+            return (filtered[height-1].select(pl.col("value")).item())
         else:
-            return value.item()
-        # return self._data.get(key)
+            return self.init_val
 
     # Not called TODO: Test this
     def __delitem__(self, key):
@@ -73,12 +71,12 @@ class Wire:
     def length(self):
         """Returns the time duration of the wire."""
         #AKA: returns last time change
-        # return self._data.length()
-        value = self._data_df.last().collect().select(pl.col("time"))
-        if value.is_empty():
-            return 0
+        filtered = self._data_df.collect()
+        height = filtered.height
+        if(height > 0):
+            return (filtered[height-1].select(pl.col("time")).item())
         else:
-            return value.item()
+            return 0
 
     # Not called TODO: Test this
     def end(self):
