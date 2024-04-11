@@ -9,10 +9,10 @@ class Wire:
     def __init__(self, name, width=1):
         self.name = name
         self._data = ValueChange()
+        self.bit_width = width
         # column-based dataframe of value changes
         self._data_df = pl.DataFrame()
-        self.last_val = 0
-        self.last_key = 0
+        self.init_val = 0
 
     # Used to get data from pyrtl - Not implementing yet
     @classmethod
@@ -25,67 +25,76 @@ class Wire:
             wire[key] = data[key]
         return wire
 
+    ### DONE ###
     # Add value change to wire's df
     def __setitem__(self, key, value):
-        self._data[key] = value
-        # Fill-in between values
-        for x in range(self.last_key + 1, key):
-            temp_vc = pl.DataFrame({str(x): [{'value': self.last_val},]})
+        self._data[key] = value #Todo delete
+
+        if key == 0:
+            self.init_val = value
+        else:
+            temp_vc = pl.DataFrame({str(key): [int(value)]})
             self._data_df = pl.concat(
                     [
                         self._data_df, 
                         temp_vc
                     ],
                     how="horizontal")
-        # Add new value
-        temp_vc = pl.DataFrame({str(key): [{'value': value},]})
-        self._data_df = pl.concat(
-                [
-                    self._data_df, 
-                    temp_vc
-                ],
-                how="horizontal")
-        # Set last key, value pair
-        self.last_val = value
-        self.last_key = key
         
+    
     # Gets value of wire at time (key)
     def __getitem__(self, key):
+        print("Name: ", self.name, "Key: ", key)
+        print("Unfiltered:", self._data_df)
+
+        if (key == 0):
+            return self.init_val
+
+        latest_column = pl.Series()
+        for col in self._data_df:
+            if int(col.name) <= key:
+                latest_column = col
+        if(latest_column.len() > 0):
+            return latest_column.item()
+            
+        
+        # print ("old value: ",self._data.get(key))
         # return self._data.get(key)
-        return self._data_df.get_column(str(key))[0]['value']
+
+        # return self._data_df.get_column(str(key))[0]['value']
 
     # Not called TODO: Test this
     def __delitem__(self, key):
-        # del self._data[key]  # throws error if not present
-        self._data_df.drop(key)
+        del self._data[key]  # throws error if not present
+        # self._data_df.drop(key)
 
     # TODO: Not sure why this is called, hardcoding to 1 for now - maybe bitwidth
     def width(self):
         # return self._data.width
-        return 1
+        return self.bit_width
 
     def length(self):
         """Returns the time duration of the wire."""
         #AKA: returns last time change
-        # return self._data.length()
+        return self._data.length()
         return int(self._data_df.select(pl.last()).columns[0])
 
     # Not called TODO: Test this
     def end(self):
         """Returns the final value on the wire"""
-        return int(self._data_df.select(pl.last())[0]['value'])
+        return int(self._data_df.select(pl.last())[0])
 
     # TODO: maybe just make a column with all the times that are on
     def times(self, length=0):
         """Returns a list of times with high value on the wire."""
-        # return self._data.search(end=max(length, self.length()))
+        return self._data.search(end=max(length, self.length()))
         
         rtn_val_list = []
 
         # Works as well as line below but not sure if is faster or not TODO: Test against line below
         for col in self._data_df.select(pl.all()):
             # print(col[0]['value'])
-            if col[0]['value'] == 1:
+            if col[0] == 1:
                 rtn_val_list.append(int(col.name))
 
         # Works as well but not sure if is faster or not TODO: Test against line above
