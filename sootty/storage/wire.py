@@ -52,6 +52,15 @@ class Wire:
     # Gets value of wire at time (key)
     def __getitem__(self, key):
         # print("before:", self.name, key)
+
+        # only_df
+        filtered = self._data_df.filter(pl.col("time") <= key).collect()
+        height = filtered.height
+        if(height > 0):
+            return (filtered[height-1].select(pl.col("value")).item())
+        else:
+            return self.init_val
+
         value = self._data_df.filter(pl.col("time") <= key).last().select(pl.col("value")).collect()
         # print("after")
         if value.is_empty():
@@ -74,6 +83,14 @@ class Wire:
         """Returns the time duration of the wire."""
         #AKA: returns last time change
         # return self._data.length()
+        filtered = self._data_df.collect()
+        height = filtered.height
+        if(height > 0):
+            return (filtered[height-1].select(pl.col("time")).item())
+        else:
+            return 0
+
+        # OLD
         value = self._data_df.last().collect().select(pl.col("time"))
         if value.is_empty():
             return 0
@@ -83,6 +100,14 @@ class Wire:
     # Not called TODO: Test this
     def end(self):
         """Returns the final value on the wire"""
+        filtered = self._data_df
+        height = filtered.height
+        if(height > 0):
+            return (filtered[height-1].select(pl.col("value")).item())
+        else:
+            return 0
+
+        # OLD
         value = self._data_df.last().collect().select(pl.col("value"))
         if value.is_empty():
             return self.init_val
@@ -341,6 +366,8 @@ class Wire:
     
     ## UPDATED SUCCESSFULLY
     def change_at_time(self, key):
+        
+        #old implementation with .last()
         # check if key exists in dataframe
         value = self._data_df.filter(pl.col("time") == key).last().select(pl.col("value")).collect()
         if key == 0:
