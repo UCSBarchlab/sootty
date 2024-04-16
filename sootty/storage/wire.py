@@ -51,7 +51,6 @@ class Wire:
 
     # Gets value of wire at time (key)
     def __getitem__(self, key):
-        print(self.name)
         filtered = self._data_df.filter(pl.col("time") <= key)
         height = filtered.height
         if(height > 0):
