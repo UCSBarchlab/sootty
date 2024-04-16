@@ -366,8 +366,15 @@ class Wire:
     
     ## UPDATED SUCCESSFULLY
     def change_at_time(self, key):
-        
-        #old implementation with .last()
+        filtered = self._data_df.filter(pl.col("time") == key).collect()
+        height = filtered.height
+        if(height > 0):
+            return (filtered[height-1].select(pl.col("value")).item())
+        else:
+            return 0
+
+
+        #OLD implementation with .last()
         # check if key exists in dataframe
         value = self._data_df.filter(pl.col("time") == key).last().select(pl.col("value")).collect()
         if key == 0:
