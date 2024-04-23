@@ -47,7 +47,7 @@ class Wire:
                         self._data_df, 
                         temp_vc
                     ],
-                    how="vertical")
+                    xcxvhow="vertical")
 
     # Gets value of wire at time (key)
     def __getitem__(self, key):
