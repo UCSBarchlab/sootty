@@ -51,12 +51,32 @@ class Wire:
 
     # Gets value of wire at time (key)
     def __getitem__(self, key):
-        filtered = self._data_df.filter(pl.col("time") <= key)
-        height = filtered.height
-        if(height > 0):
-            return (filtered[height-1].select(pl.col("value")).item())
-        else:
+        # filtered = self._data_df.filter(pl.col("time") <= key)
+        # height = filtered.height
+        # if(height > 0):
+        #     return (filtered[height-1].select(pl.col("value")).item())
+        # else:
+        #     return self.init_val
+        time_column = self._data_df.get_column("time")
+        length = time_column.len()
+        
+        if length == 0:
             return self.init_val
+        
+        key_idx = time_column.search_sorted(key)
+
+        if (length-1) < key_idx:
+            key_idx = length - 1
+
+        time = self._data_df.get_column("time")[key_idx]
+
+        if time != key:
+            if key_idx == 0:
+                return self.init_val
+            else:
+                return self._data_df.get_column("value")[key_idx - 1]
+        else:
+            return self._data_df.get_column("value")[key_idx]
 
     # Not called TODO: Test this
     def __delitem__(self, key):
@@ -71,20 +91,18 @@ class Wire:
     def length(self):
         """Returns the time duration of the wire."""
         #AKA: returns last time change
-        filtered = self._data_df
-        height = filtered.height
+        height = self._data_df.height
         if(height > 0):
-            return (filtered[height-1].select(pl.col("time")).item())
+            return (self._data_df[height-1].select(pl.col("time")).item())
         else:
             return 0
 
     # Not called TODO: Test this
     def end(self):
         """Returns the final value on the wire"""
-        filtered = self._data_df
-        height = filtered.height
+        height = self._data_df.height
         if(height > 0):
-            return (filtered[height-1].select(pl.col("value")).item())
+            return (self._data_df[height-1].select(pl.col("value")).item())
         else:
             return 0
         # return self._data[self._data.length()]
@@ -343,14 +361,34 @@ class Wire:
     ## UPDATED SUCCESSFULLY
     def change_at_time(self, key):
         # check if key exists in dataframe
+        # if key == 0:
+        #     return True
+        # filtered = self._data_df.filter(pl.col("time") == key)
+        # height = filtered.height
+        # if(height > 0):
+        #     return True
+        # else:
+        #     return False
         if key == 0:
             return True
-        filtered = self._data_df.filter(pl.col("time") == key)
-        height = filtered.height
-        if(height > 0):
-            return True
-        else:
+
+        time_column = self._data_df.get_column("time")
+        length = time_column.len()
+        
+        if length == 0:
+            return self.init_val
+        
+        key_idx = time_column.search_sorted(key)
+
+        if (length-1) < key_idx:
+            key_idx = length - 1
+
+        time = self._data_df.get_column("time")[key_idx]
+
+        if time != key:
             return False
+        else:
+            return True
 
     ## UPDATED SUCCESSFULLY
     def _binop(self, first, other, binop, width, xz_flag=0): 
