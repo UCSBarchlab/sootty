@@ -34,6 +34,7 @@ class Wire:
             self.init_val = value
         else:
             temp_vc = pl.DataFrame({str(key): [int(value)]})
+            print("key, value:", )
             self._data_df = pl.concat(
                     [
                         self._data_df, 
@@ -47,6 +48,33 @@ class Wire:
         print("Name: ", self.name, "Key: ", key)
         print("Unfiltered:", self._data_df)
 
+        if (key == 0):
+            return self.init_val
+
+
+        df_width = self._data_df.width
+        
+        names = self._data_df.columns
+        print("names",names)
+        
+
+        low = 0
+        high = df_width
+        half_width = high//2
+        while low <= high:
+            half_width_val = names[half_width]
+            if key == half_width_val:
+                #to_series
+                print("FOUND COLUMN")
+                break
+            elif key < half_width_val:
+                half_width = (half_width) // 2
+            elif key > half_width_val:
+                half_width = (df_width - half_width) // 2
+                print("half width value", names[half_width])
+
+
+        #OLD
         if (key == 0):
             return self.init_val
 
