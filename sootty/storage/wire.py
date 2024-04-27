@@ -34,7 +34,6 @@ class Wire:
             self.init_val = value
         else:
             temp_vc = pl.DataFrame({str(key): [int(value)]})
-            print("key, value:", )
             self._data_df = pl.concat(
                     [
                         self._data_df, 
@@ -45,52 +44,38 @@ class Wire:
     
     # Gets value of wire at time (key)
     def __getitem__(self, key):
-        print("Name: ", self.name, "Key: ", key)
-        print("Unfiltered:", self._data_df)
+        df_width = self._data_df.width
+        names = self._data_df.columns
 
-        if (key == 0):
+        # Gets value for init value and any value
+        # before the first key in dataframe
+        if(key < int(names[0])):
             return self.init_val
 
-
-        df_width = self._data_df.width
         
-        names = self._data_df.columns
-        print("names",names)
-        
-
+        # Perform binary search
         low = 0
         high = df_width
-        half_width = high//2
-        while low <= high:
-            half_width_val = names[half_width]
-            if key == half_width_val:
-                #to_series
-                print("FOUND COLUMN")
-                break
-            elif key < half_width_val:
-                half_width = (half_width) // 2
-            elif key > half_width_val:
-                half_width = (df_width - half_width) // 2
-                print("half width value", names[half_width])
-
-
-        #OLD
-        if (key == 0):
-            return self.init_val
-
-        latest_column = pl.Series()
-        for col in self._data_df:
-            if int(col.name) <= key:
-                latest_column = col
-        if(latest_column.len() > 0):
-            return latest_column.item()
-            
+        result = -1
         
-        # print ("old value: ",self._data.get(key))
-        # return self._data.get(key)
+        while (high - low) > 1:
+            half_width = (low + high) // 2
+            half_width_val = names[half_width]
+            if key == int(half_width_val):
+                result = half_width
+                break
+            elif key < int(half_width_val):
+                high = half_width
+            elif key > int(half_width_val):
+                low = half_width
 
-        # return self._data_df.get_column(str(key))[0]['value']
+        # Doesn't find key
+        if (high-low <= 1):
+            result = low
 
+        result = self._data_df.to_series(result)[0]
+        return result
+    
     # Not called TODO: Test this
     def __delitem__(self, key):
         del self._data[key]  # throws error if not present
