@@ -89,30 +89,46 @@ class Wire:
     def length(self):
         """Returns the time duration of the wire."""
         #AKA: returns last time change
-        return self._data.length()
-        return int(self._data_df.select(pl.last()).columns[0])
-
+        width = self._data_df.width
+        times = self._data_df.columns
+        if(width == 0):
+            #empty df, only init_val
+            return 0
+        else:
+            #has last time in df
+            return int(times[width-1])
+    
     # Not called TODO: Test this
     def end(self):
         """Returns the final value on the wire"""
-        return int(self._data_df.select(pl.last())[0])
+        last_key = self.length()
+        if last_key == 0:
+            return self.init_val
+        else:
+            return self._data_df.to_series()[0]
+
 
     # TODO: maybe just make a column with all the times that are on
     def times(self, length=0):
         """Returns a list of times with high value on the wire."""
+        print("CALLED on ", self.name, self._data_df)
+
+        if self._data_df.width == 0:
+            if self.init_val == 1:
+                return [0]
+            else:
+                return []
+
+        times = self._data_df.row(0)
+        print(times)
         return self._data.search(end=max(length, self.length()))
-        
-        rtn_val_list = []
 
-        # Works as well as line below but not sure if is faster or not TODO: Test against line below
-        for col in self._data_df.select(pl.all()):
-            # print(col[0]['value'])
-            if col[0] == 1:
-                rtn_val_list.append(int(col.name))
+        value = []
+        if(self.init_val == 1):
+            value = [0]
 
-        # Works as well but not sure if is faster or not TODO: Test against line above
-        # rtn_val_list = [ int(col.name) for col in self._data_df.select(pl.all() == 1) if col.all() ]
-        return rtn_val_list
+        value += self._data_df.filter(pl.col("value") > 0).collect().get_column("time").to_list()
+        return value
 
     @classmethod
     def const(cls, value):
