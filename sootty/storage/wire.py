@@ -29,23 +29,40 @@ class Wire:
     # Add value change to wire's df
     def __setitem__(self, key, value):
         self._data[key] = value #Todo delete
+        print("Name", self.name)
+        print("     key:", key, "value:", value)
+                
 
-        if key == 0:
+        if key == 0: #Init Val
             self.init_val = value
-        else:
-            temp_vc = pl.DataFrame({str(key): [int(value)]})
-            self._data_df = pl.concat(
-                    [
-                        self._data_df, 
-                        temp_vc
-                    ],
-                    how="horizontal")
+            return
         
+        column = self.keyExists(key)
+        print("     keyExists:",column)
+        if (column != None): #Column already 
+            if column == -1: # Prob not needed but just in case
+                self.init_val == value
+            else:   
+                print("     Dataframe:", self._data_df)
+                self._data_df[column] = pl.Series(str(key), [int(value)])
+                # self._data_df.with_columns(pl.col().alias(str(key)))
+        else:
+                temp_vc = pl.DataFrame({str(key): [int(value)]})
+                self._data_df = pl.concat(
+                        [
+                            self._data_df, 
+                            temp_vc
+                        ],
+                        how="horizontal")
+    
     
     # Gets value of wire at time (key)
     def __getitem__(self, key):
         df_width = self._data_df.width
         names = self._data_df.columns
+
+        if len(names) == 0:
+            return None
 
         # Gets value for init value and any value
         # before the first key in dataframe
@@ -55,7 +72,7 @@ class Wire:
         
         # Perform binary search
         low = 0
-        high = df_width
+        high = df_width 
         result = -1
         
         while (high - low) > 1:
@@ -65,16 +82,64 @@ class Wire:
                 result = half_width
                 break
             elif key < int(half_width_val):
-                high = half_width
+                high = half_width - 1
             elif key > int(half_width_val):
-                low = half_width
+                low = half_width + 1
 
         # Doesn't find key
         if (high-low <= 1):
             result = low
 
         result = self._data_df.to_series(result)[0]
+
         return result
+    
+    def keyExists(self, key):
+        print("     In keyExists")
+        df_width = self._data_df.width
+        names = self._data_df.columns
+
+        if len(names) == 0:
+            return None
+
+        # Gets value for init value and any value
+        # before the first key in dataframe
+        if(key == 0):
+            print("     line 107")
+            return -1
+
+        print("     Names:", names)
+
+        # Perform binary search
+        low = 0
+        high = df_width - 1
+        result = -2
+    
+        while (high - low) > 1:
+            half_width = (low + high) // 2
+            half_width_val = names[half_width]
+            if key == int(half_width_val):
+                result = half_width
+                break
+            elif key < int(half_width_val):
+                high = half_width - 1
+            elif key > int(half_width_val):
+                low = half_width + 1
+        
+        print("         high:", high, "low:", low)
+
+
+      # Doesn't find key
+        if (high-low <= 1):
+            if names[high] == key:
+                result = high
+            if names[low] == key:
+                result = low
+            else:
+                result = None
+                
+        return result
+
     
     # Not called TODO: Test this
     def __delitem__(self, key):
@@ -133,12 +198,18 @@ class Wire:
     @classmethod
     def const(cls, value):
         wire = cls(name=f"c_{value}", width=0)
+        #OLD
         wire[0] = value
+        #NEW
+        wire.init_val = value
         return wire
 
     @classmethod
     def time(cls, value):
         wire = cls(name=f"t_{value}", width=1)
+        #NEW
+
+        #OLD
         wire[0] = 0
         wire[value] = 1
         wire[value + 1] = 0
