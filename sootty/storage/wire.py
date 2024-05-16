@@ -4,6 +4,7 @@ from ..exceptions import *
 from .valuechange import ValueChange
 from sortedcontainers import SortedDict, SortedList, SortedSet
 import polars as pl
+# import time
 
 def flip_each_bit(value, width):
     return int(~(value)) & (2 << width - 1) - 1
