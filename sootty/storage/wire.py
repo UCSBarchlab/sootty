@@ -4,6 +4,7 @@ from ..exceptions import *
 from .valuechange import ValueChange
 from sortedcontainers import SortedDict, SortedList, SortedSet
 import polars as pl
+# import time
 
 def flip_each_bit(value, width):
     return int(~(value)) & (2 << width - 1) - 1
@@ -20,7 +21,7 @@ class Wire:
         self.bit_width = width
         self.init_val = 0
         # self._data = ValueChange(width)
-        self._data_df = pl.LazyFrame(schema={"time": pl.Int64, "value": pl.Int64})
+        self._data_df = pl.DataFrame(schema={"time": pl.Int64, "value": pl.Int64})
 
     # Used to get data from pyrtl - Not implementing yet
     @classmethod
@@ -41,7 +42,7 @@ class Wire:
             self.init_val = value
         else:
             # self._data[key] = value
-            temp_vc = pl.LazyFrame({'time': [int(key)], 'value': [int(value)]})
+            temp_vc = pl.DataFrame({'time': [int(key)], 'value': [int(value)]})
             self._data_df = pl.concat(
                     [
                         self._data_df, 
@@ -51,14 +52,32 @@ class Wire:
 
     # Gets value of wire at time (key)
     def __getitem__(self, key):
-        # print("before:", self.name, key)
-        value = self._data_df.filter(pl.col("time") <= key).last().select(pl.col("value")).collect()
-        # print("after")
-        if value.is_empty():
+        # filtered = self._data_df.filter(pl.col("time") <= key)
+        # height = filtered.height
+        # if(height > 0):
+        #     return (filtered[height-1].select(pl.col("value")).item())
+        # else:
+        #     return self.init_val
+        time_column = self._data_df.get_column("time")
+        length = time_column.len()
+        
+        if length == 0:
             return self.init_val
+        
+        key_idx = time_column.search_sorted(key)
+
+        if (length-1) < key_idx:
+            key_idx = length - 1
+
+        time = self._data_df.get_column("time")[key_idx]
+
+        if time != key:
+            if key_idx == 0:
+                return self.init_val
+            else:
+                return self._data_df.get_column("value")[key_idx - 1]
         else:
-            return value.item()
-        # return self._data.get(key)
+            return self._data_df.get_column("value")[key_idx]
 
     # Not called TODO: Test this
     def __delitem__(self, key):
@@ -73,21 +92,21 @@ class Wire:
     def length(self):
         """Returns the time duration of the wire."""
         #AKA: returns last time change
-        # return self._data.length()
-        value = self._data_df.last().collect().select(pl.col("time"))
-        if value.is_empty():
-            return 0
+        height = self._data_df.height
+        if(height > 0):
+            return (self._data_df[height-1].select(pl.col("time")).item())
         else:
-            return value.item()
+            return 0
 
     # Not called TODO: Test this
     def end(self):
         """Returns the final value on the wire"""
-        value = self._data_df.last().collect().select(pl.col("value"))
-        if value.is_empty():
-            return self.init_val
+        height = self._data_df.height
+        if(height > 0):
+            return (self._data_df[height-1].select(pl.col("value")).item())
         else:
-            return value.item()
+            return 0
+        # return self._data[self._data.length()]
 
     # TODO: test this with returns that are more than one value (not just [20], instead like [20, 22])
     def times(self, length=0):
@@ -96,7 +115,7 @@ class Wire:
         if(self.init_val == 1):
             value = [0]
 
-        value += self._data_df.filter(pl.col("value") > 0).collect().get_column("time").to_list()
+        value += self._data_df.filter(pl.col("value") > 0).get_column("time").to_list()
 
         # print("Wire:", self.name, "value:", value)
         # if len(value) > 0:
@@ -118,7 +137,7 @@ class Wire:
         wire = cls(name=f"t_{value}", width=1)
 
         #NEW
-        wire._data_df = pl.LazyFrame({'time': [0, int(value), int(value + 1)], 'value': [0, 1, 0]})
+        wire._data_df = pl.DataFrame({'time': [0, int(value), int(value + 1)], 'value': [0, 1, 0]})
         
         #OLD TODO: Delete (when we delete self._data)
         wire[0] = 0
@@ -212,6 +231,7 @@ class Wire:
         temp_wire.bit_width = self.bit_width
 
         # New Query
+        # TODO: make to_bool work for xxxxxx values
         wire._to_bool()
         temp_wire._to_bool()
         wire = wire.__or__(temp_wire)
@@ -337,15 +357,36 @@ class Wire:
 
     ## UPDATED SUCCESSFULLY
     def get_all_times(self):
-        return self._data_df.collect().get_column("time").to_list()
+        return self._data_df.get_column("time").to_list()
     
     ## UPDATED SUCCESSFULLY
     def change_at_time(self, key):
         # check if key exists in dataframe
-        value = self._data_df.filter(pl.col("time") == key).last().select(pl.col("value")).collect()
+        # if key == 0:
+        #     return True
+        # filtered = self._data_df.filter(pl.col("time") == key)
+        # height = filtered.height
+        # if(height > 0):
+        #     return True
+        # else:
+        #     return False
         if key == 0:
             return True
-        elif value.is_empty():
+
+        time_column = self._data_df.get_column("time")
+        length = time_column.len()
+        
+        if length == 0:
+            return self.init_val
+        
+        key_idx = time_column.search_sorted(key)
+
+        if (length-1) < key_idx:
+            key_idx = length - 1
+
+        time = self._data_df.get_column("time")[key_idx]
+
+        if time != key:
             return False
         else:
             return True
