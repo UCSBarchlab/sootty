@@ -10,8 +10,13 @@ t1 = time.time()
 total = t1 - t0
 print(f"Time taken: {total:.4f}s")
 
+t2 = time.time()
 # Convert wiretrace to svg:
-image = Visualizer(Style.Dark).to_svg(wiretrace, start=0, length=8)
+image = Visualizer(Style.Dark).to_svg(wiretrace, start=0, length=8, wires='D0 D1' )
+t3 = time.time()
+
+total2 = t3 - t2
+print(f"Time taken2: {total2:.4f}s")
 
 # Display to stdout:
 image.display()

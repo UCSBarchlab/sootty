@@ -5,6 +5,8 @@ from .display import VectorImage
 from .exceptions import SoottyInternalError
 from .utils import dec2anybase
 
+import time
+
 
 class Style:
     """Container class for visualizer style settings."""
@@ -88,6 +90,8 @@ class Visualizer:
             length = wiretrace.length()
 
         if wires is not None:  # include all wires if empty list provided
+            # time here
+            # t2 = time.time()
             wires = (
                 None
                 if len(wires) == 0
@@ -95,6 +99,7 @@ class Visualizer:
                     map(lambda wire: wire.name, wiretrace.compute_wires(wires.strip()))
                 )
             )
+            #time here
 
         return VectorImage(
             self._wiretrace_to_svg(
