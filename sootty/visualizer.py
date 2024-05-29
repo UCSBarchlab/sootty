@@ -4,6 +4,7 @@ from enum import Enum
 from .display import VectorImage
 from .exceptions import SoottyInternalError
 from .utils import dec2anybase
+import time
 
 
 class Style:
@@ -88,6 +89,7 @@ class Visualizer:
             length = wiretrace.length()
 
         if wires is not None:  # include all wires if empty list provided
+            t3 = time.time()
             wires = (
                 None
                 if len(wires) == 0
@@ -95,6 +97,8 @@ class Visualizer:
                     map(lambda wire: wire.name, wiretrace.compute_wires(wires.strip()))
                 )
             )
+            t4 = time.time()
+            print(f"Time taken - compute wires: {t4 - t3:.8f}s")
 
         return VectorImage(
             self._wiretrace_to_svg(
@@ -153,6 +157,7 @@ class Visualizer:
         index = result[1]
 
         # Add each composite wire to the image.
+        t1 = time.time()
         if wires is not None:
             for wire in wires:
                 svg += self._wire_to_svg(
@@ -169,6 +174,9 @@ class Visualizer:
             wires.clear()  # TODO: fix temporary solution for catching exceptions
 
         svg += "</svg>"
+        t2 = time.time()
+
+        print(f"Time taken - compute wire visualizer: {t2 - t1:.8f}s")
         return svg
 
     def _timestamps_to_svg(self, left, top, start, length):
