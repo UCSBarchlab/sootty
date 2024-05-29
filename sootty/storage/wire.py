@@ -52,16 +52,11 @@ class Wire:
 
     # Gets value of wire at time (key)
     def __getitem__(self, key):
-        # filtered = self._data_df.filter(pl.col("time") <= key)
-        # height = filtered.height
-        # if(height > 0):
-        #     return (filtered[height-1].select(pl.col("value")).item())
-        # else:
-        #     return self.init_val
-        time_column = self._data_df.get_column("time")
-        length = time_column.len()
-        
-        if length == 0:
+        filtered = self._data_df.filter(pl.col("time") <= key)
+        height = filtered.height
+        if(height > 0):
+            return (filtered[height-1].select(pl.col("value")).item())
+        else:
             return self.init_val
         
         key_idx = time_column.search_sorted(key)
