@@ -12,7 +12,7 @@ print(f"Time taken: {total:.4f}s")
 
 t2 = time.time()
 # Convert wiretrace to svg:
-for i in range(10):
+for i in range(100):
     image = Visualizer(Style.Dark).to_svg(wiretrace, start=4, length=26, wires='clk,rst_n,clk,rst_n,pc,pc_next,inst,immed,wreg,wdata,sdata,tdata,op,alu_in1,alu_in2,alu_out,zero,rdata,alu_src,alu_shift,branch,mem_to_reg,mem_read,mem_write,reg_dst,reg_write,addr,rdata,clk,rst_n,reg_write,wreg,wdata,sdata,tdata')
     
 t3 = time.time()
