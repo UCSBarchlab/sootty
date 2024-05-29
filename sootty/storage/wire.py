@@ -30,7 +30,7 @@ class Wire:
         wire = cls(name=name, width=width)
         for key in compress(
             range(len(data)),
-            map(lambda pair: pair[0] != pair[1], zip(chain([None], data), data)),
+            map(lambda pair: pair[0] != pair[1], zip(chain([None], data), data)), #zip combines multiple interables into tuples, chain combined multiple iterables into single interable, 
         ):
             wire[key] = data[key]
         return wire

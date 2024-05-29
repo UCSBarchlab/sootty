@@ -1,6 +1,7 @@
 import sys
-from vcd.reader import *
+import polars as pl
 
+from vcd.reader import *
 from ..exceptions import *
 from ..parser import parser
 from .wiregroup import WireGroup
@@ -9,8 +10,10 @@ from ..utils import evcd2vcd
 
 
 class WireTrace:
-    def __init__(self):
-        self.root = WireGroup("__root__")
+    def __init__(self): #constructor and is automatically called when new instance of class is created
+        self.root = WireGroup("__root__") #created a instance of Wiregroup with root argument
+        self.wires_metadata_df = pl.DataFrame() 
+        self.wires_vc = pl.DataFrame()
 
     @classmethod
     def from_vcd(cls, filename):
@@ -77,6 +80,11 @@ class WireTrace:
         this = cls()
         this.metadata = dict()  # dictionary of vcd metadata
         wires = dict()  # map from id_code to wire object
+
+        wire_metadata_df_list = []
+        wire_vc_dfs = []
+        idx_count = 0
+
         stack = [this.root]  # store stack of current group for scoping
 
         with open(filename, "rb") as stream:
@@ -91,26 +99,46 @@ class WireTrace:
                     this.metadata["date"] = token.date
                 elif token.kind is TokenKind.ENDDEFINITIONS:
                     break  # end of definitions
-                elif token.kind is TokenKind.SCOPE:
-                    group = WireGroup(token.scope.ident)
-                    stack[-1].add_group(group)
-                    stack.append(group)
+                elif token.kind is TokenKind.SCOPE: #see scope, add group(containing scope), add to top of stack
+                    #print("this the scope:", token.scope.ident)
+                    #group = WireGroup(token.scope.ident) group contains the name of the scope, which contains wires, which is all in a wiregroup object
+                    prepend_name = ''
+                    prepend_name += stack[-1].name + '.' + token.scope.ident
+                    group = WireGroup(prepend_name)
+                    stack[-1].add_group(group) #add new group to last index of the list, which is the top of stack 
+                    stack.append(group) #add the group to the stack
                 elif token.kind is TokenKind.TIMESCALE:
                     this.metadata["timescale"] = token.timescale
                 elif token.kind is TokenKind.UPSCOPE:
-                    if len(stack) == 0:
+                    if len(stack) == 0: #the stack is empty, which is should not be
                         raise SoottyError(f"Illegal end of scope.")
-                    stack.pop()
+                    stack.pop() #remove the group, which is the wire group that is the scope
                 elif token.kind is TokenKind.VAR:
-                    if token.var.id_code in wires:
-                        stack[-1].add_wire(wires[token.var.id_code])
+                    if token.var.id_code in wires: #if ASCI already exists in wires dict
+                        # Used if wire is in multiple groups?
+                        # wire_groups[token.var.id_code].append(stack[-1].name)
+                        #prepending the name here based on stack[-1] value is
+                        stack[-1].add_wire(wires[token.var.id_code]) #idk why we are adding wire object to the wiregroup/scope that has a repeated idenitifer to top of stack
                     else:
-                        wire = Wire(
+                        wire = Wire( #create new a wire if it is unique ASCI
                             name=token.var.reference,
                             width=token.var.size,
                         )
-                        wires[token.var.id_code] = wire
-                        stack[-1].add_wire(wire)
+
+                        wire_metadata_dict =    {"id": token.var.id_code, # we created this, what is df_idx count
+                                        "name": token.var.reference,
+                                        "size": token.var.size,
+                                        "df_idx": idx_count,
+                                        "Module": stack[-1].name}
+                        wire_metadata_df_list.append(wire_metadata_dict )
+
+                        # wire_groups[tokn.var.id_code].append(stack[-1].name)
+                        vc_df = pl.DataFrame()
+                        # wire_vc_dfs.append(vc_df)
+                        idx_count = idx_count + 1
+
+                        wires[token.var.id_code] = wire #add wire object to wires dict, so wires key is ASCi and value is wire object
+                        stack[-1].add_wire(wire) #add wire to top of stack
                 elif token.kind is TokenKind.VERSION:
                     this.metadata["version"] = token.version
                 else:
@@ -119,14 +147,21 @@ class WireTrace:
             time = None
             for token in tokens:
                 if token.kind is TokenKind.CHANGE_TIME:
-                    time = token.time_change
+                    time = token.time_change #prints out the time values denotes by #4095
                 elif token.kind is TokenKind.CHANGE_SCALAR:
                     value = token.scalar_change.value
                     value = int(value) if value in ("0", "1") else value
-                    wires[token.scalar_change.id_code][time] = value
+
+                    vc_dict =    {"time": time,
+                                  "id": token.scalar_change.id_code,
+                                  "value": value}
+                    # wire_vc_dfs.append(wire_dict)
+                    wire_vc_dfs.append(vc_dict)
+                    wire = wires[token.scalar_change.id_code]
+                    wire[time] = value #_setitem_ being called
                 elif token.kind is TokenKind.CHANGE_VECTOR:
                     value = token.vector_change.value
-                    wires[token.vector_change.id_code][time] = value
+                    wires[token.vector_change.id_code][time] = value #setitem
                 elif token.kind is TokenKind.CHANGE_REAL:
                     raise SoottyInternalError(
                         f"You forgot to implement token CHANGE_REAL."
@@ -147,6 +182,13 @@ class WireTrace:
                     pass  # not sure what to do here
                 else:
                     raise SoottyError(f"Invalid vcd token when parsing: {token}")
+                
+            #print("testing if we get wires or anything else like reg:", wires)
+            this.wires_metadata_df = pl.from_dicts(wire_metadata_df_list)
+            this.wires_vc = pl.from_dicts(wire_vc_dfs)
+            #print(this.wires_metadata_df)
+            #print(this.wires_vc)
+            #print("WiredListt:", wire_metadata_df_list)
 
             return this
 
