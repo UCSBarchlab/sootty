@@ -2,13 +2,19 @@ from itertools import compress, chain
 
 from ..exceptions import *
 from .valuechange import ValueChange
+import polars as pl
 
 
 class Wire:
     def __init__(self, name, width=1):
         self.name = name
-        self._data = ValueChange(width)
+        self._data = ValueChange()
+        self.bit_width = width
+        # column-based dataframe of value changes
+        self._data_df = pl.DataFrame()
+        self.init_val = 0
 
+    # Used to get data from pyrtl - Not implementing yet
     @classmethod
     def from_data(cls, name, data, width=1):
         wire = cls(name=name, width=width)
@@ -19,39 +25,191 @@ class Wire:
             wire[key] = data[key]
         return wire
 
+    ### DONE ###
+    # Add value change to wire's df
     def __setitem__(self, key, value):
-        self._data[key] = value
+        self._data[key] = value #Todo delete
+        print("Name", self.name)
+        print("     key:", key, "value:", value)
+                
 
+        if key == 0: #Init Val
+            self.init_val = value
+            return
+        
+        column = self.keyExists(key)
+        print("     keyExists:",column)
+        if (column != None): #Column already 
+            if column == -1: # Prob not needed but just in case
+                self.init_val == value
+            else:   
+                print("     Dataframe:", self._data_df)
+                self._data_df[column] = pl.Series(str(key), [int(value)])
+                # self._data_df.with_columns(pl.col().alias(str(key)))
+        else:
+                temp_vc = pl.DataFrame({str(key): [int(value)]})
+                self._data_df = pl.concat(
+                        [
+                            self._data_df, 
+                            temp_vc
+                        ],
+                        how="horizontal")
+    
+    
+    # Gets value of wire at time (key)
     def __getitem__(self, key):
-        return self._data.get(key)
+        df_width = self._data_df.width
+        names = self._data_df.columns
 
+        if len(names) == 0:
+            return None
+
+        # Gets value for init value and any value
+        # before the first key in dataframe
+        if(key < int(names[0])):
+            return self.init_val
+
+        
+        # Perform binary search
+        low = 0
+        high = df_width 
+        result = -1
+        
+        while (high - low) > 1:
+            half_width = (low + high) // 2
+            half_width_val = names[half_width]
+            if key == int(half_width_val):
+                result = half_width
+                break
+            elif key < int(half_width_val):
+                high = half_width - 1
+            elif key > int(half_width_val):
+                low = half_width + 1
+
+        # Doesn't find key
+        if (high-low <= 1):
+            result = low
+
+        result = self._data_df.to_series(result)[0]
+
+        return result
+    
+    def keyExists(self, key):
+        print("     In keyExists")
+        df_width = self._data_df.width
+        names = self._data_df.columns
+
+        if len(names) == 0:
+            return None
+
+        # Gets value for init value and any value
+        # before the first key in dataframe
+        if(key == 0):
+            print("     line 107")
+            return -1
+
+        print("     Names:", names)
+
+        # Perform binary search
+        low = 0
+        high = df_width - 1
+        result = -2
+    
+        while (high - low) > 1:
+            half_width = (low + high) // 2
+            half_width_val = names[half_width]
+            if key == int(half_width_val):
+                result = half_width
+                break
+            elif key < int(half_width_val):
+                high = half_width - 1
+            elif key > int(half_width_val):
+                low = half_width + 1
+        
+        print("         high:", high, "low:", low)
+
+
+      # Doesn't find key
+        if (high-low <= 1):
+            if names[high] == key:
+                result = high
+            if names[low] == key:
+                result = low
+            else:
+                result = None
+                
+        return result
+
+    
+    # Not called TODO: Test this
     def __delitem__(self, key):
         del self._data[key]  # throws error if not present
+        # self._data_df.drop(key)
 
+    # TODO: Not sure why this is called, hardcoding to 1 for now - maybe bitwidth
     def width(self):
-        return self._data.width
+        # return self._data.width
+        return self.bit_width
 
     def length(self):
         """Returns the time duration of the wire."""
-        return self._data.length()
-
+        #AKA: returns last time change
+        width = self._data_df.width
+        times = self._data_df.columns
+        if(width == 0):
+            #empty df, only init_val
+            return 0
+        else:
+            #has last time in df
+            return int(times[width-1])
+    
+    # Not called TODO: Test this
     def end(self):
         """Returns the final value on the wire"""
-        return self._data[self._data.length()]
+        last_key = self.length()
+        if last_key == 0:
+            return self.init_val
+        else:
+            return self._data_df.to_series()[0]
 
+
+    # TODO: maybe just make a column with all the times that are on
     def times(self, length=0):
         """Returns a list of times with high value on the wire."""
+        print("CALLED on ", self.name, self._data_df)
+
+        if self._data_df.width == 0:
+            if self.init_val == 1:
+                return [0]
+            else:
+                return []
+
+        times = self._data_df.row(0)
+        print(times)
         return self._data.search(end=max(length, self.length()))
+
+        value = []
+        if(self.init_val == 1):
+            value = [0]
+
+        value += self._data_df.filter(pl.col("value") > 0).collect().get_column("time").to_list()
+        return value
 
     @classmethod
     def const(cls, value):
         wire = cls(name=f"c_{value}", width=0)
+        #OLD
         wire[0] = value
+        #NEW
+        wire.init_val = value
         return wire
 
     @classmethod
     def time(cls, value):
         wire = cls(name=f"t_{value}", width=1)
+        #NEW
+
+        #OLD
         wire[0] = 0
         wire[value] = 1
         wire[value + 1] = 0
